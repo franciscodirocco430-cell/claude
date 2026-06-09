@@ -1,35 +1,43 @@
 import type { Metadata } from "next";
-import { Inter, Syne } from "next/font/google";
+import { DM_Sans, Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toaster";
 import "./globals.css";
 
-const inter = Inter({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-dm-sans",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const syne = Syne({
+const outfit = Outfit({
   subsets: ["latin"],
-  variable: "--font-syne",
-  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-outfit",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: {
-    default: "Freelie — Find Talent. Ship Faster.",
+    default: "Freelie — Conectando talento con oportunidades reales",
     template: "%s | Freelie",
   },
   description:
-    "Freelie is a SaaS-enabled marketplace connecting top digital talent with ambitious clients. Anti-leakage chat, escrow-backed contracts, XP-driven profiles.",
-  keywords: ["freelance", "marketplace", "talent", "contracts", "remote work"],
+    "Freelie es el primer marketplace LATAM para talento digital joven y PYMEs. 1% de comisión, contratos in-app, chat anti-leakage y sistema de reputación gamificado.",
+  keywords: ["freelance", "marketplace", "talento", "PYME", "LATAM", "trabajo digital", "contratos", "XP"],
   openGraph: {
-    title: "Freelie — Find Talent. Ship Faster.",
+    title: "Freelie — Tu próximo trabajo no pide CV. Pide talento.",
     description:
-      "Connect with top digital talent. Escrow contracts, milestone tracking, and anti-leakage messaging.",
+      "Conectamos jóvenes profesionales con PYMEs que necesitan talento real, ahora. 1% de comisión, chat anti-leakage y gamificación real.",
     type: "website",
+    locale: "es_AR",
+    siteName: "Freelie",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Freelie — Tu próximo trabajo no pide CV. Pide talento.",
+    description: "Marketplace para talento digital LATAM. 1% de comisión, contratos in-app, XP gamificado.",
   },
 };
 
@@ -40,15 +48,15 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang="es"
       suppressHydrationWarning
-      className={`${inter.variable} ${syne.variable}`}
+      className={`${dmSans.variable} ${outfit.variable} dark`}
     >
-      <body className="min-h-screen bg-white dark:bg-gray-950">
+      <body className="min-h-screen bg-[#0A0A0F] text-white">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <ToastProvider>{children}</ToastProvider>

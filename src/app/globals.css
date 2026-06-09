@@ -4,82 +4,139 @@
 
 @layer base {
   :root {
+    /* Freelie Brand Colors */
+    --color-primary: #905BF4;
+    --color-secondary: #B470FF;
+    --color-surface: #0A0A0F;
+    --color-surface-2: #12121A;
+    --color-border: rgba(144, 91, 244, 0.15);
+
+    /* Semantic tokens — light mode */
     --primary: #905BF4;
     --primary-foreground: #ffffff;
     --secondary: #B470FF;
     --secondary-foreground: #ffffff;
+    --background: #0A0A0F;
+    --foreground: #f9fafb;
+    --muted: #12121A;
+    --muted-foreground: #9ca3af;
+    --border: rgba(144, 91, 244, 0.15);
+    --card: #12121A;
+    --card-foreground: #f9fafb;
+
+    /* Design system */
+    --radius: 16px;
+    --radius-sm: 8px;
+    --radius-full: 9999px;
+    --shadow-glow: 0 0 40px rgba(144, 91, 244, 0.25);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .light {
     --background: #ffffff;
     --foreground: #111827;
     --muted: #f3f4f6;
     --muted-foreground: #6b7280;
     --border: #e5e7eb;
-    --radius: 0.75rem;
-  }
-
-  .dark {
-    --primary: #905BF4;
-    --primary-foreground: #ffffff;
-    --secondary: #B470FF;
-    --secondary-foreground: #ffffff;
-    --background: #0a0a0f;
-    --foreground: #f9fafb;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
-    --border: #1f2937;
+    --card: #ffffff;
+    --card-foreground: #111827;
   }
 
   * {
-    @apply border-border;
     box-sizing: border-box;
+    border-color: var(--border);
   }
 
   html {
-    @apply scroll-smooth;
+    scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-outfit), var(--font-inter), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    font-family: var(--font-dm-sans), var(--font-outfit), sans-serif;
+    letter-spacing: -0.02em;
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(144, 91, 244, 0.3); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(144, 91, 244, 0.5); }
 
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full dark:bg-gray-700;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-600;
-  }
-
-  /* Focus visible */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2;
+    outline: none;
+    ring: 2px solid var(--primary);
+    ring-offset: 2px;
   }
 }
 
 @layer utilities {
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #905BF4, #B470FF);
   }
 
   .glass {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/20;
+    background: rgba(18, 18, 26, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(144, 91, 244, 0.15);
+  }
+
+  .glass-light {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glow {
+    box-shadow: var(--shadow-glow);
   }
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .surface-2 {
+    background-color: #12121A;
+  }
+
+  .border-brand {
+    border-color: rgba(144, 91, 244, 0.15);
+  }
+
+  /* Grain texture overlay */
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 128px 128px;
+    opacity: 0.04;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

@@ -35,9 +35,18 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[#0A0A0F]">
+      {/* Radial glow — persistent across all internal screens */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden="true"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle 500px at 50% 100px, rgba(144,91,246,0.2), transparent)",
+        }}
+      />
       <Navbar profile={profile} />
-      <div className="flex flex-1">
+      <div className="flex flex-1 relative z-10">
         <Sidebar profile={profile} />
         <main className="flex-1 overflow-auto pb-16 md:pb-0">
           {children}

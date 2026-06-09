@@ -3,6 +3,14 @@ import type { SubscriptionTier } from "@/lib/types/database.types";
 export const SUBSCRIPTION_LIMITS: Record<
   SubscriptionTier,
   {
+    monthly_matches: number;
+    active_proposals: number;
+    algorithm_precision: "basic" | "advanced" | "ai";
+    badges_visible: boolean;
+    boost_feed: boolean;
+    featured_feed: boolean;
+    ai_autopilot_access: boolean;
+    price_monthly: number;
     maxApplications: number;
     maxProjects: number;
     canViewProposals: boolean;
@@ -11,6 +19,14 @@ export const SUBSCRIPTION_LIMITS: Record<
   }
 > = {
   free: {
+    monthly_matches: 3,
+    active_proposals: 1,
+    algorithm_precision: "basic",
+    badges_visible: false,
+    boost_feed: false,
+    featured_feed: false,
+    ai_autopilot_access: false,
+    price_monthly: 0,
     maxApplications: 3,
     maxProjects: 1,
     canViewProposals: true,
@@ -18,13 +34,29 @@ export const SUBSCRIPTION_LIMITS: Record<
     priorityMatching: false,
   },
   pro: {
-    maxApplications: 20,
-    maxProjects: 10,
+    monthly_matches: Infinity,
+    active_proposals: 5,
+    algorithm_precision: "advanced",
+    badges_visible: true,
+    boost_feed: true,
+    featured_feed: false,
+    ai_autopilot_access: false,
+    price_monthly: 19,
+    maxApplications: Infinity,
+    maxProjects: Infinity,
     canViewProposals: true,
     canUseChat: true,
     priorityMatching: true,
   },
   elite: {
+    monthly_matches: Infinity,
+    active_proposals: Infinity,
+    algorithm_precision: "ai",
+    badges_visible: true,
+    boost_feed: true,
+    featured_feed: true,
+    ai_autopilot_access: true,
+    price_monthly: 49,
     maxApplications: Infinity,
     maxProjects: Infinity,
     canViewProposals: true,
@@ -32,6 +64,33 @@ export const SUBSCRIPTION_LIMITS: Record<
     priorityMatching: true,
   },
 };
+
+export const XP_EVENTS = {
+  CONTRACT_COMPLETED: 50,
+  ON_TIME_DELIVERY: 20,
+  FIVE_STAR_REVIEW: 30,
+  FOUR_STAR_REVIEW: 15,
+  PROFILE_COMPLETE: 10,
+  FIRST_CONTRACT: 25,
+  FAST_RESPONSE: 5,
+  LATE_DELIVERY: -10,
+  CONTRACT_CANCELLED: -15,
+  MODERATION_STRIKE: -20,
+} as const;
+
+export const XP_LEVELS = {
+  junior: { min: 0, max: 200, label: "Junior" },
+  mid: { min: 201, max: 500, label: "Mid" },
+  senior: { min: 501, max: 800, label: "Senior" },
+  elite: { min: 801, max: 1000, label: "Elite" },
+} as const;
+
+export function getXPLevel(score: number): keyof typeof XP_LEVELS {
+  if (score >= 801) return "elite";
+  if (score >= 501) return "senior";
+  if (score >= 201) return "mid";
+  return "junior";
+}
 
 export const XP_THRESHOLDS = {
   BRONZE: 0,

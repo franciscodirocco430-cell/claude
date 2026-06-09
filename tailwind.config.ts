@@ -45,8 +45,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["var(--font-syne)", "sans-serif"],
-        sans: ["var(--font-inter)", "sans-serif"],
+        display: ["var(--font-dm-sans)", "var(--font-outfit)", "sans-serif"],
+        sans: ["var(--font-outfit)", "var(--font-dm-sans)", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",
