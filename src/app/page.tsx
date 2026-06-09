@@ -1,7 +1,9 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React from "react";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import {
   Zap,
@@ -19,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PricingSection } from "@/components/ui/pricing-section";
 
-const ShaderBackground = dynamic(
+const ShaderBackground = dynamicImport(
   () => import("@/components/ui/shader-background"),
   { ssr: false }
 );
