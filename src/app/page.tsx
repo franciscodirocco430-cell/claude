@@ -17,6 +17,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PricingSection } from "@/components/ui/pricing-section";
 
 const ShaderBackground = dynamic(
   () => import("@/components/ui/shader-background"),
@@ -358,62 +359,10 @@ export default function LandingPage() {
       </section>
 
       {/* ACTION — Pricing */}
-      <section id="pricing" className="px-4 py-24 sm:px-6 lg:px-8 relative">
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true"
-          style={{ backgroundImage: "radial-gradient(circle 500px at 20% 50%, rgba(144,91,244,0.08), transparent)" }} />
-        <div className="mx-auto max-w-5xl relative">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-dm-sans)" }}>
-              Planes que escalan con vos
-            </h2>
-            <p className="text-white/50 max-w-xl mx-auto">
-              La comisión del 1% se aplica en todos los planes. Las suscripciones son para matching y visibilidad.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {pricingTiers.map((tier) => (
-              <div key={tier.name} className={`rounded-2xl p-6 border transition-all hover:scale-[1.01] flex flex-col ${
-                tier.highlighted
-                  ? "border-[#905BF4] bg-gradient-to-b from-[#905BF4]/15 to-[#12121A]"
-                  : "border-[#905BF4]/15 bg-[#12121A] hover:border-[#905BF4]/30"
-              }`}
-                style={tier.highlighted ? { boxShadow: "0 0 40px rgba(144,91,244,0.2)" } : {}}>
-                {tier.highlighted && (
-                  <div className="text-xs font-bold text-[#905BF4] uppercase tracking-widest mb-3">Más popular</div>
-                )}
-                <div className="mb-4">
-                  <div className="text-xl font-bold text-white mb-1" style={{ fontFamily: "var(--font-dm-sans)" }}>{tier.name}</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">${tier.price}</span>
-                    {tier.price !== "0" && <span className="text-white/40 text-sm">/mes</span>}
-                  </div>
-                  <p className="text-white/40 text-sm mt-1">{tier.description}</p>
-                </div>
-                <ul className="space-y-3 flex-1 mb-6">
-                  {tier.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-white/70">
-                      <CheckCircle className="h-4 w-4 text-[#905BF4] shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={tier.href}
-                  className={`w-full h-11 rounded-xl font-semibold flex items-center justify-center transition-colors min-h-[44px] ${
-                    tier.highlighted
-                      ? "bg-[#905BF4] hover:bg-[#7C3AED] text-white"
-                      : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                  }`}
-                  style={tier.highlighted ? { boxShadow: "0 0 20px rgba(144,91,244,0.3)" } : {}}
-                >
-                  {tier.cta}
-                </Link>
-              </div>
-            ))}
-          </div>
-          <p className="text-center text-sm text-white/30 mt-6">1% de comisión sobre contratos cerrados. Sin costos ocultos.</p>
-        </div>
-      </section>
+      <div id="pricing">
+        <PricingSection />
+        <p className="text-center text-sm text-white/30 pb-8">1% de comisión sobre contratos cerrados. Sin costos ocultos.</p>
+      </div>
 
       {/* Final CTA */}
       <section className="px-4 py-24 sm:px-6 lg:px-8">
