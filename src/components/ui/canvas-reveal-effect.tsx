@@ -1,79 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import * as THREE from "three";
-
-const fragmentShader = `
-precision highp float;
-uniform float u_time;
-uniform vec2 u_resolution;
-uniform vec3 u_color1;
-uniform vec3 u_color2;
-
-float random(vec2 st) {
-  return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
-void main() {
-  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-
-  float gridSize = 40.0;
-  vec2 grid = floor(uv * gridSize) / gridSize;
-  vec2 cell = fract(uv * gridSize);
-
-  float r = random(grid + floor(u_time * 0.5));
-  float pulse = random(grid + floor(u_time * 1.3));
-
-  float dot = smoothstep(0.4, 0.35, length(cell - 0.5));
-
-  float brightness = mix(0.0, 1.0, step(0.85, r)) * dot;
-  brightness += mix(0.0, 0.5, step(0.92, pulse)) * dot;
-
-  vec3 col = mix(u_color1, u_color2, uv.x + uv.y * 0.5);
-  gl_FragColor = vec4(col * brightness, brightness * 0.9);
-}
-`;
-
-const vertexShader = `
-void main() {
-  gl_Position = vec4(position, 1.0);
-}
-`;
-
-function DotMatrixMesh({ color1, color2 }: { color1: string; color2: string }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const { size } = useThree();
-
-  const uniforms = useMemo(
-    () => ({
-      u_time: { value: 0 },
-      u_resolution: { value: new THREE.Vector2(size.width, size.height) },
-      u_color1: { value: new THREE.Color(color1) },
-      u_color2: { value: new THREE.Color(color2) },
-    }),
-    [color1, color2, size.width, size.height]
-  );
-
-  useFrame(({ clock }) => {
-    if (meshRef.current) {
-      (meshRef.current.material as THREE.ShaderMaterial).uniforms.u_time.value = clock.getElapsedTime();
-    }
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <planeGeometry args={[2, 2]} />
-      <shaderMaterial
-        fragmentShader={fragmentShader}
-        vertexShader={vertexShader}
-        uniforms={uniforms}
-        transparent
-        depthWrite={false}
-      />
-    </mesh>
-  );
-}
+import React, { useEffect, useRef } from "react";
 
 interface CanvasRevealEffectProps {
   color1?: string;
@@ -81,20 +8,91 @@ interface CanvasRevealEffectProps {
   className?: string;
 }
 
+function hexToRgb(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return [r, g, b];
+}
+
 export function CanvasRevealEffect({
   color1 = "#905BF4",
   color2 = "#B470FF",
   className,
 }: CanvasRevealEffectProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+  const timeRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const GRID = 36;
+    const [r1, g1, b1] = hexToRgb(color1);
+    const [r2, g2, b2] = hexToRgb(color2);
+
+    const rand = (x: number, y: number, t: number) => {
+      const s = Math.sin(x * 127.1 + y * 311.7 + t * 0.5) * 43758.5453;
+      return s - Math.floor(s);
+    };
+
+    const draw = (ts: number) => {
+      timeRef.current = ts / 1000;
+      const t = timeRef.current;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const cellW = canvas.width / GRID;
+      const cellH = canvas.height / GRID;
+      const dotR = Math.min(cellW, cellH) * 0.28;
+
+      for (let x = 0; x < GRID; x++) {
+        for (let y = 0; y < GRID; y++) {
+          const r = rand(x, y, Math.floor(t * 1.5));
+          const pulse = rand(x, y, Math.floor(t * 0.8) + 100);
+          if (r < 0.15 || pulse < 0.08) {
+            const alpha = r < 0.15 ? 0.6 + r * 2 : 0.3 + pulse;
+            const mix = (x / GRID + y / GRID) * 0.5;
+            const cr = r1 + (r2 - r1) * mix;
+            const cg = g1 + (g2 - g1) * mix;
+            const cb = b1 + (b2 - b1) * mix;
+            ctx.beginPath();
+            ctx.arc(
+              x * cellW + cellW / 2,
+              y * cellH + cellH / 2,
+              dotR,
+              0,
+              Math.PI * 2
+            );
+            ctx.fillStyle = `rgba(${Math.round(cr * 255)},${Math.round(cg * 255)},${Math.round(cb * 255)},${Math.min(alpha, 0.9)})`;
+            ctx.fill();
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    rafRef.current = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", resize);
+    };
+  }, [color1, color2]);
+
   return (
-    <div className={className}>
-      <Canvas
-        gl={{ antialias: false, alpha: true }}
-        camera={{ position: [0, 0, 1] }}
-        style={{ background: "transparent" }}
-      >
-        <DotMatrixMesh color1={color1} color2={color2} />
-      </Canvas>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ display: "block", width: "100%", height: "100%", background: "transparent" }}
+    />
   );
 }
