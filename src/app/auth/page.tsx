@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Mail, KeyRound, CheckCircle2, Sparkles } from "lucide-react";
+import { ArrowLeft, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -66,11 +66,21 @@ export default function AuthPage() {
           backdropFilter: "blur(20px)",
           border: "1px solid rgba(144,91,244,0.2)",
         }}>
-        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#905BF4] to-[#B470FF] flex items-center justify-center"
-          style={{ boxShadow: "0 0 12px rgba(144,91,244,0.4)" }}>
-          <Sparkles className="h-3.5 w-3.5 text-white" />
-        </div>
-        <span className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>Freelie</span>
+        <svg width="26" height="26" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <radialGradient id="auth-vortex" cx="40%" cy="40%" r="60%">
+              <stop offset="0%" stopColor="#C084FC" />
+              <stop offset="100%" stopColor="#7C3AED" />
+            </radialGradient>
+          </defs>
+          <path d="M50 50 C50 28 32 16 18 20 C14 34 26 52 50 50Z" fill="url(#auth-vortex)" opacity="0.95" />
+          <path d="M50 50 C72 50 84 32 80 18 C66 14 48 26 50 50Z" fill="url(#auth-vortex)" opacity="0.8" />
+          <path d="M50 50 C72 50 84 68 80 82 C66 86 48 74 50 50Z" fill="url(#auth-vortex)" opacity="0.7" />
+          <path d="M50 50 C50 72 32 84 18 80 C14 66 26 48 50 50Z" fill="url(#auth-vortex)" opacity="0.9" />
+          <path d="M50 50 C28 50 16 68 20 82 C34 86 52 74 50 50Z" fill="url(#auth-vortex)" opacity="0.6" />
+          <circle cx="50" cy="50" r="10" fill="#0A0A0F" opacity="0.8" />
+        </svg>
+        <span className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Freelie</span>
         <Link href="/" className="ml-4 flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors">
           <ArrowLeft className="h-3 w-3" /> Volver
         </Link>
@@ -100,7 +110,7 @@ export default function AuthPage() {
                   style={{ background: "rgba(144,91,244,0.15)", border: "1px solid rgba(144,91,244,0.3)" }}>
                   <Mail className="h-5 w-5 text-[#905BF4]" />
                 </div>
-                <h1 className="mb-1 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>
+                <h1 className="mb-1 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
                   Ingresá tu email
                 </h1>
                 <p className="mb-6 text-sm text-white/50">
@@ -141,7 +151,7 @@ export default function AuthPage() {
                   style={{ background: "rgba(144,91,244,0.15)", border: "1px solid rgba(144,91,244,0.3)" }}>
                   <KeyRound className="h-5 w-5 text-[#905BF4]" />
                 </div>
-                <h1 className="mb-1 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>
+                <h1 className="mb-1 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
                   Revisá tu email
                 </h1>
                 <p className="mb-6 text-sm text-white/50">
@@ -190,7 +200,7 @@ export default function AuthPage() {
                   style={{ background: "rgba(144,91,244,0.15)", border: "1px solid rgba(144,91,244,0.3)" }}>
                   <CheckCircle2 className="h-8 w-8 text-[#905BF4]" />
                 </div>
-                <h1 className="mb-2 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>
+                <h1 className="mb-2 text-2xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
                   ¡Bienvenido/a!
                 </h1>
                 <p className="text-sm text-white/50">Redirigiendo a tu feed...</p>

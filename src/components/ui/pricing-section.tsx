@@ -100,7 +100,7 @@ export function PricingSection() {
             <Sparkles className="h-4 w-4" />
             Planes simples, sin sorpresas
           </div>
-          <h2 className="text-4xl font-bold text-white md:text-5xl" style={{ fontFamily: "var(--font-dm-sans)" }}>
+          <h2 className="text-4xl font-bold text-white md:text-5xl" style={{ fontFamily: "var(--font-display)" }}>
             <VerticalCutReveal delay={0.1}>Invertí en tu</VerticalCutReveal>{" "}
             <VerticalCutReveal delay={0.3} className="text-[#905BF4]">carrera</VerticalCutReveal>
           </h2>

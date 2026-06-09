@@ -3,19 +3,35 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Moon, Sun, LogOut, Settings, User, ChevronDown } from "lucide-react";
-import { useTheme } from "next-themes";
+import { LogOut, Settings, User, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import type { Profile } from "@/lib/types/database.types";
 
 interface NavbarProps {
   profile: Profile | null;
 }
 
+function FreelieVortex({ size = 32 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="nav-vortex" cx="40%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="#C084FC" />
+          <stop offset="100%" stopColor="#7C3AED" />
+        </radialGradient>
+      </defs>
+      <path d="M50 50 C50 28 32 16 18 20 C14 34 26 52 50 50Z" fill="url(#nav-vortex)" opacity="0.95" />
+      <path d="M50 50 C72 50 84 32 80 18 C66 14 48 26 50 50Z" fill="url(#nav-vortex)" opacity="0.8" />
+      <path d="M50 50 C72 50 84 68 80 82 C66 86 48 74 50 50Z" fill="url(#nav-vortex)" opacity="0.7" />
+      <path d="M50 50 C50 72 32 84 18 80 C14 66 26 48 50 50Z" fill="url(#nav-vortex)" opacity="0.9" />
+      <path d="M50 50 C28 50 16 68 20 82 C34 86 52 74 50 50Z" fill="url(#nav-vortex)" opacity="0.6" />
+      <circle cx="50" cy="50" r="10" fill="#0A0A0F" opacity="0.8" />
+    </svg>
+  );
+}
+
 export function Navbar({ profile }: NavbarProps) {
-  const { theme, setTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
   const supabase = createClient();
@@ -32,14 +48,14 @@ export function Navbar({ profile }: NavbarProps) {
           { href: "/feed", label: "Feed" },
           { href: "/matches", label: "Matches" },
           { href: "/chat", label: "Chat" },
-          { href: "/contracts", label: "Contracts" },
+          { href: "/contracts", label: "Contratos" },
         ]
       : [
-          { href: "/feed", label: "Talent" },
-          { href: "/projects", label: "Projects" },
-          { href: "/matches", label: "Applications" },
+          { href: "/feed", label: "Talento" },
+          { href: "/projects", label: "Proyectos" },
+          { href: "/matches", label: "Aplicaciones" },
           { href: "/chat", label: "Chat" },
-          { href: "/contracts", label: "Contracts" },
+          { href: "/contracts", label: "Contratos" },
         ];
 
   return (
@@ -51,12 +67,9 @@ export function Navbar({ profile }: NavbarProps) {
         WebkitBackdropFilter: "blur(20px)",
       }}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/feed" className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#905BF4] to-[#B470FF] flex items-center justify-center"
-            style={{ boxShadow: "0 0 12px rgba(144,91,244,0.4)" }}>
-            <span className="text-sm font-bold text-white">F</span>
-          </div>
-          <span className="text-xl font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>
+        <Link href="/feed" className="flex items-center gap-2">
+          <FreelieVortex size={30} />
+          <span className="text-lg font-bold tracking-widest text-white uppercase" style={{ fontFamily: "var(--font-display)" }}>
             Freelie
           </span>
         </Link>
@@ -121,8 +134,13 @@ export function Navbar({ profile }: NavbarProps) {
             </div>
           ) : (
             <Link href="/auth"
-              className="bg-[#905BF4] hover:bg-[#7C3AED] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors min-h-[44px] flex items-center">
-              Iniciar sesión
+              className="text-white text-sm font-semibold px-5 py-2 rounded-xl transition-all min-h-[44px] flex items-center tracking-wide uppercase"
+              style={{
+                background: "linear-gradient(90deg, #905BF4, #B470FF)",
+                fontFamily: "var(--font-display)",
+                boxShadow: "0 0 20px rgba(144,91,244,0.3)",
+              }}>
+              Ingresar
             </Link>
           )}
         </div>

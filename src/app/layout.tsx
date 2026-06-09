@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import { DM_Sans, Outfit } from "next/font/google";
+import { Exo_2, Nunito } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toaster";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+// Closest to Cropar Regular: geometric tech uppercase display font
+const exo2 = Exo_2({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
+  variable: "--font-display",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
 });
 
-const outfit = Outfit({
+// Closest to Futura: geometric humanist sans with multiple weights
+const nunito = Nunito({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-body",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -50,7 +52,7 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${outfit.variable} dark`}
+      className={`${exo2.variable} ${nunito.variable} dark`}
     >
       <body className="min-h-screen bg-[#0A0A0F] text-white">
         <ThemeProvider

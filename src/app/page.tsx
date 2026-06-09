@@ -132,12 +132,22 @@ export default function LandingPage() {
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#905BF4] to-[#B470FF] flex items-center justify-center"
-              style={{ boxShadow: "0 0 16px rgba(144,91,244,0.5)" }}>
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>
+          <Link href="/" className="flex items-center gap-2">
+            <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
+              <defs>
+                <radialGradient id="hero-vortex" cx="40%" cy="40%" r="60%">
+                  <stop offset="0%" stopColor="#C084FC" />
+                  <stop offset="100%" stopColor="#7C3AED" />
+                </radialGradient>
+              </defs>
+              <path d="M50 50 C50 28 32 16 18 20 C14 34 26 52 50 50Z" fill="url(#hero-vortex)" opacity="0.95" />
+              <path d="M50 50 C72 50 84 32 80 18 C66 14 48 26 50 50Z" fill="url(#hero-vortex)" opacity="0.8" />
+              <path d="M50 50 C72 50 84 68 80 82 C66 86 48 74 50 50Z" fill="url(#hero-vortex)" opacity="0.7" />
+              <path d="M50 50 C50 72 32 84 18 80 C14 66 26 48 50 50Z" fill="url(#hero-vortex)" opacity="0.9" />
+              <path d="M50 50 C28 50 16 68 20 82 C34 86 52 74 50 50Z" fill="url(#hero-vortex)" opacity="0.6" />
+              <circle cx="50" cy="50" r="10" fill="#0A0A0F" opacity="0.8" />
+            </svg>
+            <span className="text-xl font-bold tracking-wide text-white" style={{ fontFamily: "var(--font-display)" }}>
               Freelie
             </span>
           </Link>
@@ -171,7 +181,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl text-white mb-6"
-            style={{ fontFamily: "var(--font-dm-sans)" }}>
+            style={{ fontFamily: "var(--font-display)" }}>
             Tu próximo trabajo{" "}
             <br className="hidden sm:block" />
             no pide CV.{" "}
@@ -217,7 +227,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4"
-              style={{ fontFamily: "var(--font-dm-sans)" }}>
+              style={{ fontFamily: "var(--font-display)" }}>
               Todo lo que necesitás para{" "}
               <span style={{ background: "linear-gradient(135deg, #905BF4, #B470FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 trabajar mejor
@@ -235,7 +245,7 @@ export default function LandingPage() {
                   <Zap className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white text-lg mb-1" style={{ fontFamily: "var(--font-dm-sans)" }}>
+                  <h3 className="font-semibold text-white text-lg mb-1" style={{ fontFamily: "var(--font-display)" }}>
                     Matching inteligente
                   </h3>
                   <p className="text-white/50 text-sm leading-relaxed">
@@ -256,7 +266,7 @@ export default function LandingPage() {
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-[#7C3AED] to-[#905BF4] flex items-center justify-center mb-4">
                 <Shield className="h-5 w-5 text-white" />
               </div>
-              <h3 className="font-semibold text-white text-lg mb-2" style={{ fontFamily: "var(--font-dm-sans)" }}>
+              <h3 className="font-semibold text-white text-lg mb-2" style={{ fontFamily: "var(--font-display)" }}>
                 Chat sin fricción
               </h3>
               <p className="text-white/50 text-sm leading-relaxed flex-1">
@@ -276,7 +286,7 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#B470FF] to-[#905BF4] flex items-center justify-center mb-3">
                 <FileText className="h-5 w-5 text-white" />
               </div>
-              <h3 className="font-semibold text-white text-base mb-1" style={{ fontFamily: "var(--font-dm-sans)" }}>Contratos in-app</h3>
+              <h3 className="font-semibold text-white text-base mb-1" style={{ fontFamily: "var(--font-display)" }}>Contratos in-app</h3>
               <p className="text-white/50 text-xs leading-relaxed">Generá acuerdos, firma digital y milestones sin salir de la plataforma.</p>
             </div>
 
@@ -284,7 +294,7 @@ export default function LandingPage() {
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#905BF4] to-[#6D28D9] flex items-center justify-center mb-3">
                 <Trophy className="h-5 w-5 text-white" />
               </div>
-              <h3 className="font-semibold text-white text-base mb-1" style={{ fontFamily: "var(--font-dm-sans)" }}>Score de reputación</h3>
+              <h3 className="font-semibold text-white text-base mb-1" style={{ fontFamily: "var(--font-display)" }}>Score de reputación</h3>
               <p className="text-white/50 text-xs leading-relaxed">XP, badges y niveles que visibilizan tu talento desde el día 1.</p>
             </div>
           </div>
@@ -297,7 +307,7 @@ export default function LandingPage() {
           style={{ backgroundImage: "radial-gradient(circle 600px at 80% 50%, rgba(144,91,244,0.1), transparent)" }} />
         <div className="mx-auto max-w-5xl relative">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-dm-sans)" }}>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
               Cómo funciona
             </h2>
             <p className="text-white/50">En menos de 3 minutos, listo para tu primer match.</p>
@@ -316,7 +326,7 @@ export default function LandingPage() {
                       <Icon className="h-6 w-6 text-white" />
                     </div>
                     <div className="text-xs text-[#905BF4] font-bold mb-1 font-mono">{step.number}</div>
-                    <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: "var(--font-dm-sans)" }}>{step.title}</h3>
+                    <h3 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: "var(--font-display)" }}>{step.title}</h3>
                     <p className="text-sm text-white/50 leading-relaxed">{step.description}</p>
                   </div>
                 </div>
@@ -330,7 +340,7 @@ export default function LandingPage() {
       <section id="testimonials" className="px-4 py-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-dm-sans)" }}>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
               Lo que dicen quienes ya usan Freelie
             </h2>
           </div>
@@ -372,7 +382,7 @@ export default function LandingPage() {
               background: "linear-gradient(180deg, rgba(144,91,244,0.1) 0%, #12121A 100%)",
               boxShadow: "0 0 80px rgba(144,91,244,0.15)",
             }}>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-dm-sans)" }}>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-white mb-4" style={{ fontFamily: "var(--font-display)" }}>
               Empezá gratis.{" "}
               <span style={{ background: "linear-gradient(135deg, #905BF4, #B470FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
                 Crecé en serio.
@@ -400,7 +410,7 @@ export default function LandingPage() {
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#905BF4] to-[#B470FF] flex items-center justify-center">
                 <Sparkles className="h-3.5 w-3.5 text-white" />
               </div>
-              <span className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-dm-sans)" }}>Freelie</span>
+              <span className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>Freelie</span>
             </Link>
             <p className="text-sm text-white/30">Freelie © 2026 — Conectando talento con oportunidades reales.</p>
             <div className="flex gap-6 text-sm text-white/40">
