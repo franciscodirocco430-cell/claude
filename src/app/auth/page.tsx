@@ -1,14 +1,16 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState } from "react";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Mail, KeyRound, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
-const CanvasRevealEffect = dynamic(
+const CanvasRevealEffect = dynamicImport(
   () => import("@/components/ui/canvas-reveal-effect").then((m) => ({ default: m.CanvasRevealEffect })),
   { ssr: false }
 );
