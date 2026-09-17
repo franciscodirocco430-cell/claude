@@ -19,16 +19,21 @@ const syne = Syne({
 
 export const metadata: Metadata = {
   title: {
-    default: "Freelie — Find Talent. Ship Faster.",
-    template: "%s | Freelie",
+    default: "Content Intelligence — AI content analysis",
+    template: "%s | Content Intelligence",
   },
   description:
-    "Freelie is a SaaS-enabled marketplace connecting top digital talent with ambitious clients. Anti-leakage chat, escrow-backed contracts, XP-driven profiles.",
-  keywords: ["freelance", "marketplace", "talent", "contracts", "remote work"],
+    "Upload social and marketing content and get AI-driven scores, honest insights, and concrete recommendations for your next piece.",
+  keywords: [
+    "content analysis",
+    "AI marketing",
+    "social media analytics",
+    "content strategy",
+  ],
   openGraph: {
-    title: "Freelie — Find Talent. Ship Faster.",
+    title: "Content Intelligence",
     description:
-      "Connect with top digital talent. Escrow contracts, milestone tracking, and anti-leakage messaging.",
+      "AI-powered content analysis: scores, hook analysis, retention, recommendations, and next content ideas.",
     type: "website",
   },
 };
@@ -40,15 +45,16 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang="es"
       suppressHydrationWarning
-      className={`${inter.variable} ${syne.variable}`}
+      className={`${inter.variable} ${syne.variable} dark`}
     >
-      <body className="min-h-screen bg-white dark:bg-gray-950">
+      <body className="min-h-screen bg-background text-foreground">
         <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
+          attribute="data-theme"
+          defaultTheme="dark"
+          forcedTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <ToastProvider>{children}</ToastProvider>

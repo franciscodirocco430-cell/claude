@@ -33,60 +33,25 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes that don't require auth
-  const publicRoutes = ["/", "/auth", "/auth/callback"];
+  const publicRoutes = ["/", "/login", "/register", "/auth/callback", "/forgot-password"];
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith("/auth")
   );
 
-  // API routes handle their own auth
   if (pathname.startsWith("/api/")) {
     return supabaseResponse;
   }
 
-  // If not authenticated and trying to access protected route
   if (!user && !isPublicRoute) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/auth";
+    redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If authenticated and already completed onboarding, redirect away from /onboarding
-  if (user && pathname === "/onboarding") {
-    const { data: profileCheck } = await supabase
-      .from("profiles")
-      .select("onboarding_complete")
-      .eq("id", user.id)
-      .single();
-
-    if (profileCheck?.onboarding_complete) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/feed";
-      return NextResponse.redirect(redirectUrl);
-    }
-  }
-
-  // If authenticated, check onboarding
-  if (user && !isPublicRoute && pathname !== "/onboarding") {
-    // Check if onboarding is complete
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_complete")
-      .eq("id", user.id)
-      .single();
-
-    if (profile && !profile.onboarding_complete) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/onboarding";
-      return NextResponse.redirect(redirectUrl);
-    }
-  }
-
-  // If authenticated and trying to access auth page, redirect to feed
-  if (user && pathname === "/auth") {
+  if (user && (pathname === "/login" || pathname === "/register")) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/feed";
+    redirectUrl.pathname = "/dashboard";
     return NextResponse.redirect(redirectUrl);
   }
 

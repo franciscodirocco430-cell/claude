@@ -1,236 +1,160 @@
 "use client";
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { Chrome } from "lucide-react";
+import * as React from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Sparkles, Mail, Lock, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { useToast } from "@/components/ui/toast";
-import type { UserRole } from "@/lib/types/database.types";
 
-const signInSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
+interface AuthFormProps {
+  mode: "login" | "register";
+}
 
-const signUpSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  displayName: z.string().min(2, "Display name must be at least 2 characters"),
-  role: z.enum(["freelo", "freelier"] as const),
-});
-
-type SignInData = z.infer<typeof signInSchema>;
-type SignUpData = z.infer<typeof signUpSchema>;
-
-export function AuthForm() {
+export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const supabase = createClient();
+  const [loading, setLoading] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [fullName, setFullName] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
 
-  const signInForm = useForm<SignInData>({
-    resolver: zodResolver(signInSchema),
-  });
+  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
-  const signUpForm = useForm<SignUpData>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: { role: "freelo" },
-  });
-
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      toast({ type: "error", title: "Google sign in failed", description: error.message });
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleSignIn = async (data: SignInData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
+    const supabase = createClient();
 
-    if (error) {
-      toast({ type: "error", title: "Sign in failed", description: error.message });
+    try {
+      if (mode === "register") {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
+        if (signUpError) throw signUpError;
+        toast({
+          type: "success",
+          title: "Account created",
+          description: "Check your inbox to confirm your email if required, then sign in.",
+        });
+        router.push("/login");
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        router.push(redirectTo);
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/feed");
-    router.refresh();
-  };
-
-  const handleSignUp = async (data: SignUpData) => {
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: {
-          display_name: data.displayName,
-          role: data.role,
-        },
-      },
-    });
-
-    if (error) {
-      toast({ type: "error", title: "Sign up failed", description: error.message });
-      setLoading(false);
-      return;
-    }
-
-    toast({
-      type: "success",
-      title: "Account created!",
-      description: "Please check your email to verify your account.",
-    });
-    setLoading(false);
   };
 
   return (
-    <Tabs defaultValue="signin" className="w-full">
-      <TabsList className="w-full">
-        <TabsTrigger value="signin" className="flex-1">
-          Sign In
-        </TabsTrigger>
-        <TabsTrigger value="signup" className="flex-1">
-          Sign Up
-        </TabsTrigger>
-      </TabsList>
-
-      {/* Google OAuth - shared between tabs */}
-      <div className="mt-6">
-        <Button
-          variant="outline"
-          className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
-          onClick={handleGoogleSignIn}
-          loading={googleLoading}
-        >
-          <Chrome className="h-4 w-4" />
-          Continue with Google
-        </Button>
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200 dark:border-gray-700" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-white px-3 text-gray-500 dark:bg-gray-900 dark:text-gray-400">
-              or continue with email
-            </span>
-          </div>
+    <div className="w-full max-w-sm">
+      <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
+          <Sparkles className="h-5 w-5 text-white" />
         </div>
+        <h1 className="font-display text-2xl font-bold">
+          {mode === "login" ? "Welcome back" : "Create your account"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {mode === "login"
+            ? "Sign in to keep analyzing your content."
+            : "Start turning your content into insights."}
+        </p>
       </div>
 
-      {/* Sign In Form */}
-      <TabsContent value="signin">
-        <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            {...signInForm.register("email")}
-            error={signInForm.formState.errors.email?.message}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            {...signInForm.register("password")}
-            error={signInForm.formState.errors.password?.message}
-          />
-          <Button type="submit" className="w-full" loading={loading}>
-            Sign In
-          </Button>
-        </form>
-      </TabsContent>
-
-      {/* Sign Up Form */}
-      <TabsContent value="signup">
-        <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
-          <Input
-            label="Display Name"
-            type="text"
-            placeholder="Jane Smith"
-            {...signUpForm.register("displayName")}
-            error={signUpForm.formState.errors.displayName?.message}
-          />
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            {...signUpForm.register("email")}
-            error={signUpForm.formState.errors.email?.message}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            {...signUpForm.register("password")}
-            error={signUpForm.formState.errors.password?.message}
-          />
-
-          {/* Role Selection */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              I am a...
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {(["freelo", "freelier"] as UserRole[]).map((role) => {
-                const labels = {
-                  freelo: { title: "Freelancer", desc: "I offer services" },
-                  freelier: { title: "Client", desc: "I hire talent" },
-                };
-                const selected = signUpForm.watch("role") === role;
-                return (
-                  <label
-                    key={role}
-                    className={`flex cursor-pointer flex-col rounded-xl border-2 p-3 transition-all ${
-                      selected
-                        ? "border-primary bg-primary/5"
-                        : "border-gray-200 hover:border-primary/50 dark:border-gray-700"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      value={role}
-                      className="sr-only"
-                      {...signUpForm.register("role")}
-                    />
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {labels[role].title}
-                    </span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {labels[role].desc}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === "register" && (
+          <div className="relative">
+            <User className="pointer-events-none absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+            <Input
+              label="Full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ada Lovelace"
+              required
+              className="pl-9"
+            />
           </div>
+        )}
 
-          <Button type="submit" className="w-full" loading={loading}>
-            Create Account
-          </Button>
-          <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-            By signing up, you agree to our Terms of Service and Privacy Policy.
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+            required
+            className="pl-9"
+          />
+        </div>
+
+        <div className="relative">
+          <Lock className="pointer-events-none absolute left-3 top-[38px] h-4 w-4 text-muted-foreground" />
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            minLength={6}
+            required
+            className="pl-9"
+          />
+        </div>
+
+        {mode === "login" && (
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </div>
+        )}
+
+        {error && (
+          <p role="alert" className="text-xs text-red-400">
+            {error}
           </p>
-        </form>
-      </TabsContent>
-    </Tabs>
+        )}
+
+        <LiquidButton type="submit" loading={loading} className="w-full">
+          {mode === "login" ? "Sign in" : "Create account"}
+        </LiquidButton>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        {mode === "login" ? (
+          <>
+            No account yet?{" "}
+            <Link href="/register" className="text-primary hover:underline">
+              Register
+            </Link>
+          </>
+        ) : (
+          <>
+            Already have an account?{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </>
+        )}
+      </p>
+    </div>
   );
 }

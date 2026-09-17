@@ -1,5 +1,5 @@
 {
-  "name": "freelie",
+  "name": "content-intelligence",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,14 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest"
+    "test": "vitest",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "next": "14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@supabase/supabase-js": "^2.44.4",
-    "@supabase/ssr": "^0.5.1",
+    "@supabase/ssr": "^0.12.7",
+    "@anthropic-ai/sdk": "^0.27.3",
     "next-themes": "^0.3.0",
     "lucide-react": "^0.400.0",
     "zod": "^3.23.8",
@@ -22,7 +24,9 @@
     "@hookform/resolvers": "^3.9.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.4.0",
-    "class-variance-authority": "^0.7.0"
+    "class-variance-authority": "^0.7.0",
+    "framer-motion": "^11.3.19",
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "typescript": "^5.5.3",
@@ -38,6 +42,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "jsdom": "^24.1.1",
     "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.5"
+    "eslint-config-next": "14.2.35",
+    "tsx": "^4.16.2"
   }
 }

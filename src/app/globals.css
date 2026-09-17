@@ -4,28 +4,24 @@
 
 @layer base {
   :root {
-    --primary: #905BF4;
+    --primary: #4c7cff;
     --primary-foreground: #ffffff;
-    --secondary: #B470FF;
+    --secondary: #8b5cf6;
     --secondary-foreground: #ffffff;
+    --background: #090909;
+    --foreground: #f5f5f5;
+    --muted: #121212;
+    --muted-foreground: #a1a1aa;
+    --border: rgba(255, 255, 255, 0.08);
+    --radius: 1.25rem;
+  }
+
+  :root[data-theme="light"] {
     --background: #ffffff;
     --foreground: #111827;
     --muted: #f3f4f6;
     --muted-foreground: #6b7280;
     --border: #e5e7eb;
-    --radius: 0.75rem;
-  }
-
-  .dark {
-    --primary: #905BF4;
-    --primary-foreground: #ffffff;
-    --secondary: #B470FF;
-    --secondary-foreground: #ffffff;
-    --background: #0a0a0f;
-    --foreground: #f9fafb;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
-    --border: #1f2937;
   }
 
   * {
@@ -36,6 +32,7 @@
   html {
     @apply scroll-smooth;
     -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
   }
 
   body {
@@ -46,7 +43,6 @@
     @apply font-display;
   }
 
-  /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -57,16 +53,25 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full dark:bg-gray-700;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-600;
+    background: rgba(255, 255, 255, 0.2);
   }
 
-  /* Focus visible */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2;
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -76,7 +81,15 @@
   }
 
   .glass {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/20;
+    background: rgba(18, 18, 18, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .surface-card {
+    background: #121212;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .text-balance {

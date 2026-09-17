@@ -1,209 +1,266 @@
-export type UserRole = "freelo" | "freelier";
-export type SubscriptionTier = "free" | "pro" | "elite";
-export type ProjectStatus = "draft" | "open" | "in_progress" | "completed" | "cancelled";
-export type MatchStatus = "pending" | "accepted" | "rejected" | "withdrawn";
-export type MessageType = "text" | "proposal" | "system";
-export type ProposalStatus = "pending" | "accepted" | "rejected" | "countered";
-export type ContractStatus = "active" | "completed" | "disputed" | "cancelled";
-export type EscrowStatus = "pending" | "held" | "released";
-export type AvailabilityStatus = "available" | "busy" | "open_to_offers";
+export type ContentType =
+  | "reel"
+  | "tiktok"
+  | "youtube_short"
+  | "long_form_video"
+  | "carousel"
+  | "static_image"
+  | "ad_creative"
+  | "written_post"
+  | "script"
+  | "other";
 
-export interface Profile {
-  id: string;
-  email: string;
-  role: UserRole;
-  display_name: string | null;
-  avatar_url: string | null;
-  subscription_tier: SubscriptionTier;
-  xp_score: number;
-  onboarding_complete: boolean;
-  created_at: string;
-}
+export type Platform =
+  | "instagram"
+  | "tiktok"
+  | "youtube"
+  | "linkedin"
+  | "x"
+  | "facebook"
+  | "other";
 
-export interface FreeloProfile {
-  id: string;
-  skills: string[];
-  portfolio_items: PortfolioItem[];
-  hourly_rate: number | null;
-  bio: string | null;
-  availability: AvailabilityStatus;
-  stack: string[];
-}
+export type ContentGoal =
+  | "awareness"
+  | "engagement"
+  | "followers"
+  | "leads"
+  | "sales"
+  | "education"
+  | "authority"
+  | "community";
 
-export interface FreelierProfile {
-  id: string;
-  company_name: string | null;
-  kyc_full_name: string | null;
-  kyc_tax_id: string | null;
-  kyc_verified: boolean;
-}
+export type ContentStatus = "uploaded" | "processing" | "analyzed" | "failed";
+export type SourceKind = "file" | "text" | "url";
+export type AssetType = "original" | "thumbnail" | "frame" | "audio" | "transcript";
+export type DataCompleteness = "content_only" | "with_metrics";
+export type Priority = "high" | "medium" | "low";
 
-export interface Project {
-  id: string;
-  freelier_id: string;
-  title: string;
-  description: string | null;
-  required_skills: string[];
-  budget_min: number | null;
-  budget_max: number | null;
-  status: ProjectStatus;
-  ai_brief: Record<string, unknown>;
-  created_at: string;
-}
-
-export interface Match {
-  id: string;
-  project_id: string;
-  freelo_id: string;
-  status: MatchStatus;
-  created_at: string;
-}
-
-export interface Conversation {
-  id: string;
-  match_id: string;
-  participant_a: string;
-  participant_b: string;
-  created_at: string;
-}
-
-export interface Message {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  body: string;
-  message_type: MessageType;
-  is_moderated: boolean;
-  moderation_reason: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
-}
-
-export interface Proposal {
-  id: string;
-  conversation_id: string;
-  freelo_id: string;
-  amount: number;
-  platform_fee: number;
-  milestones: Milestone[];
-  deliverables: string[];
-  status: ProposalStatus;
-  created_at: string;
-}
-
-export interface Contract {
-  id: string;
-  proposal_id: string;
-  project_id: string;
-  freelo_id: string;
-  freelier_id: string;
-  total_amount: number;
-  platform_fee: number;
-  status: ContractStatus;
-  escrow_status: EscrowStatus;
-  agreement_text: string | null;
-  created_at: string;
-  completed_at: string | null;
-}
-
-export interface Review {
-  id: string;
-  contract_id: string;
-  reviewer_id: string;
-  reviewee_id: string;
-  rating: number;
-  comment: string | null;
-  xp_awarded: number;
-  created_at: string;
-}
-
-export interface WebhookLog {
-  id: string;
-  event_type: string;
-  payload: Record<string, unknown>;
-  delivered_at: string;
-}
-
-export interface PortfolioItem {
-  title: string;
-  url: string;
-  description?: string;
-}
-
-export interface Milestone {
-  title: string;
-  amount: number;
-  due_date: string;
-  status: "pending" | "in_progress" | "completed";
-}
-
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: Profile;
-        Insert: Omit<Profile, "created_at"> & { created_at?: string };
-        Update: Partial<Omit<Profile, "id">>;
+        Row: {
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          company: string | null;
+          role: string | null;
+          onboarding_complete: boolean;
+          niche: string | null;
+          target_audience: string | null;
+          content_tone: string | null;
+          content_goals: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["profiles"]["Row"]> & { id: string };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Row"]>;
         Relationships: [];
       };
-      freelo_profiles: {
-        Row: FreeloProfile;
-        Insert: Partial<FreeloProfile> & { id: string };
-        Update: Partial<Omit<FreeloProfile, "id">>;
+      campaigns: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          goal: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["campaigns"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["campaigns"]["Row"]>;
         Relationships: [];
       };
-      freelier_profiles: {
-        Row: FreelierProfile;
-        Insert: Partial<FreelierProfile> & { id: string };
-        Update: Partial<Omit<FreelierProfile, "id">>;
+      content_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          campaign_id: string | null;
+          title: string;
+          content_type: ContentType;
+          platform: Platform;
+          goal: ContentGoal | null;
+          topic: string | null;
+          status: ContentStatus;
+          source_kind: SourceKind;
+          raw_text: string | null;
+          source_url: string | null;
+          storage_url: string | null;
+          thumbnail_url: string | null;
+          duration_seconds: number | null;
+          file_size_bytes: number | null;
+          is_demo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["content_items"]["Row"]> & {
+          user_id: string;
+          title: string;
+          content_type: ContentType;
+          platform: Platform;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_items"]["Row"]>;
         Relationships: [];
       };
-      projects: {
-        Row: Project;
-        Insert: Omit<Project, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Project, "id">>;
+      content_assets: {
+        Row: {
+          id: string;
+          content_id: string;
+          asset_type: AssetType;
+          storage_path: string;
+          metadata_json: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["content_assets"]["Row"]> & {
+          content_id: string;
+          asset_type: AssetType;
+          storage_path: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_assets"]["Row"]>;
         Relationships: [];
       };
-      matches: {
-        Row: Match;
-        Insert: Omit<Match, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Match, "id">>;
+      content_analysis: {
+        Row: {
+          id: string;
+          content_id: string;
+          overall_score: number;
+          scores_json: Record<string, number>;
+          summary: string | null;
+          strengths_json: string[];
+          weaknesses_json: string[];
+          hook_analysis_json: Record<string, unknown>;
+          retention_analysis_json: Record<string, unknown>;
+          structure_json: Record<string, unknown>;
+          visual_analysis_json: Record<string, unknown>;
+          cta_analysis_json: Record<string, unknown>;
+          audience_analysis_json: Record<string, unknown>;
+          data_completeness: DataCompleteness;
+          model: string;
+          prompt_version: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["content_analysis"]["Row"]> & {
+          content_id: string;
+          overall_score: number;
+          model: string;
+          prompt_version: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_analysis"]["Row"]>;
         Relationships: [];
       };
-      conversations: {
-        Row: Conversation;
-        Insert: Omit<Conversation, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Conversation, "id">>;
+      content_metrics: {
+        Row: {
+          id: string;
+          content_id: string;
+          views: number | null;
+          reach: number | null;
+          impressions: number | null;
+          likes: number | null;
+          comments: number | null;
+          shares: number | null;
+          saves: number | null;
+          watch_time_seconds: number | null;
+          average_watch_time_seconds: number | null;
+          completion_rate: number | null;
+          clicks: number | null;
+          ctr: number | null;
+          leads: number | null;
+          conversions: number | null;
+          captured_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["content_metrics"]["Row"]> & {
+          content_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_metrics"]["Row"]>;
         Relationships: [];
       };
-      messages: {
-        Row: Message;
-        Insert: Omit<Message, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Message, "id">>;
+      recommendations: {
+        Row: {
+          id: string;
+          content_id: string;
+          title: string;
+          why_it_matters: string;
+          evidence: string;
+          recommended_action: string;
+          expected_improvement_area: string;
+          priority: Priority;
+          suggested_rewrite: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["recommendations"]["Row"]> & {
+          content_id: string;
+          title: string;
+          why_it_matters: string;
+          evidence: string;
+          recommended_action: string;
+          expected_improvement_area: string;
+          priority: Priority;
+        };
+        Update: Partial<Database["public"]["Tables"]["recommendations"]["Row"]>;
         Relationships: [];
       };
-      proposals: {
-        Row: Proposal;
-        Insert: Omit<Proposal, "id" | "created_at" | "platform_fee"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Proposal, "id" | "platform_fee">>;
+      content_ideas: {
+        Row: {
+          id: string;
+          content_id: string;
+          title: string;
+          hook: string;
+          angle: string;
+          format: string;
+          suggested_structure_json: string[];
+          cta: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["content_ideas"]["Row"]> & {
+          content_id: string;
+          title: string;
+          hook: string;
+          angle: string;
+          format: string;
+          cta: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["content_ideas"]["Row"]>;
         Relationships: [];
       };
-      contracts: {
-        Row: Contract;
-        Insert: Omit<Contract, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Contract, "id">>;
+      dashboard_layouts: {
+        Row: {
+          user_id: string;
+          layout_json: string[];
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dashboard_layouts"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["dashboard_layouts"]["Row"]>;
         Relationships: [];
       };
-      reviews: {
-        Row: Review;
-        Insert: Omit<Review, "id" | "created_at"> & { id?: string; created_at?: string };
-        Update: Partial<Omit<Review, "id">>;
-        Relationships: [];
-      };
-      webhooks_log: {
-        Row: WebhookLog;
-        Insert: Omit<WebhookLog, "id" | "delivered_at"> & { id?: string; delivered_at?: string };
-        Update: Partial<Omit<WebhookLog, "id">>;
+      profile_reel_ideas: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          hook: string;
+          angle: string;
+          format: string;
+          suggested_structure_json: string[];
+          cta: string;
+          model: string;
+          prompt_version: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["profile_reel_ideas"]["Row"]> & {
+          user_id: string;
+          title: string;
+          hook: string;
+          angle: string;
+          format: string;
+          cta: string;
+          model: string;
+          prompt_version: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profile_reel_ideas"]["Row"]>;
         Relationships: [];
       };
     };
