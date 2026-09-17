@@ -10,7 +10,7 @@ import {
   ACCEPTED_VIDEO_TYPES,
   ACCEPTED_IMAGE_TYPES,
   ACCEPTED_TEXT_TYPES,
-  MAX_FILE_SIZE_BYTES,
+  MAX_IMAGE_SIZE_BYTES,
 } from "@/lib/validations/content";
 
 export type SourceKind = "file" | "text" | "url";
@@ -23,18 +23,64 @@ export interface SelectedFile {
   thumbnailDataUrl: string | null;
   /** base64 (no data: prefix) — only set for images, used for real vision analysis. */
   imageBase64: string | null;
+  /** May differ from file.type when the image was downscaled/recompressed to fit the request size limit. */
+  imageMediaType: string | null;
 }
 
-function readFileAsBase64(file: File): Promise<string> {
+function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1] ?? "");
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Returns the image ready for the request: as-is (base64) if it already fits
+ * the server's size limit, or downscaled/re-encoded as JPEG at decreasing
+ * quality until it does. This lets people upload real phone photos (often
+ * 8-20MB) without hitting Vercel's fixed 4.5MB serverless body limit or
+ * rejecting the upload outright.
+ */
+async function prepareImageForUpload(
+  file: File
+): Promise<{ base64: string; mediaType: string }> {
+  if (file.size <= MAX_IMAGE_SIZE_BYTES) {
+    const dataUrl = await readFileAsDataUrl(file);
+    return { base64: dataUrl.split(",")[1] ?? "", mediaType: file.type };
+  }
+
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not read this image."));
+    img.src = dataUrl;
+  });
+
+  const maxDimension = 2000;
+  const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  const ctx = canvas.getContext("2d");
+  ctx?.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+    const compressed = canvas.toDataURL("image/jpeg", quality);
+    const base64 = compressed.split(",")[1] ?? "";
+    if (base64.length <= MAX_IMAGE_SIZE_BYTES * 1.4) {
+      return { base64, mediaType: "image/jpeg" };
+    }
+  }
+
+  // Still too large even at the lowest quality — shrink further as a last resort.
+  canvas.width = Math.round(canvas.width * 0.6);
+  canvas.height = Math.round(canvas.height * 0.6);
+  ctx?.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const finalCompressed = canvas.toDataURL("image/jpeg", 0.5);
+  return { base64: finalCompressed.split(",")[1] ?? "", mediaType: "image/jpeg" };
 }
 
 interface UploadZoneProps {
@@ -105,20 +151,20 @@ export function UploadZone({
 }: UploadZoneProps) {
   const [isDragging, setIsDragging] = React.useState(false);
   const [processingPreview, setProcessingPreview] = React.useState(false);
+  const [fileError, setFileError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFiles = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      onFileSelected(null);
-      return;
-    }
+    setFileError(null);
 
     const kind = detectKind(file);
     if (!kind) {
-      onFileSelected(null);
+      setFileError(
+        `"${file.name}" isn't a supported format. Use MP4/MOV/WEBM/M4V for video, JPG/PNG/WEBP for images, or TXT/MD for text.`
+      );
       return;
     }
 
@@ -133,17 +179,26 @@ export function UploadZone({
         durationSeconds: duration,
         thumbnailDataUrl: thumbnail,
         imageBase64: null,
+        imageMediaType: null,
       });
     } else if (kind === "image") {
-      const imageBase64 = await readFileAsBase64(file);
-      onFileSelected({
-        file,
-        kind,
-        previewUrl: URL.createObjectURL(file),
-        durationSeconds: null,
-        thumbnailDataUrl: null,
-        imageBase64,
-      });
+      setProcessingPreview(true);
+      try {
+        const { base64, mediaType } = await prepareImageForUpload(file);
+        onFileSelected({
+          file,
+          kind,
+          previewUrl: URL.createObjectURL(file),
+          durationSeconds: null,
+          thumbnailDataUrl: null,
+          imageBase64: base64,
+          imageMediaType: mediaType,
+        });
+      } catch {
+        setFileError(`Couldn't process "${file.name}". Try a different image.`);
+      } finally {
+        setProcessingPreview(false);
+      }
     } else {
       const text = await file.text();
       onRawTextChange(text);
@@ -154,6 +209,7 @@ export function UploadZone({
         durationSeconds: null,
         thumbnailDataUrl: null,
         imageBase64: null,
+        imageMediaType: null,
       });
     }
   };
@@ -279,9 +335,9 @@ export function UploadZone({
         </div>
       </TabsContent>
 
-      {error && (
+      {(fileError || error) && (
         <p role="alert" className="mt-3 text-xs text-red-400">
-          {error}
+          {fileError || error}
         </p>
       )}
     </Tabs>

@@ -23,7 +23,10 @@ export async function POST(request: Request) {
   const hasVideo = ["reel", "tiktok", "youtube_short", "long_form_video"].includes(
     input.contentType
   );
-  const hasImage = Boolean(input.image) || ["static_image", "ad_creative", "carousel"].includes(input.contentType);
+  // Only true when real image bytes were actually attached — never inferred
+  // from contentType alone, or the AI would be told an image exists when it
+  // doesn't (e.g. a "carousel" analyzed from pasted caption text only).
+  const hasImage = Boolean(input.image);
 
   try {
     const { result, model, promptVersion } = await analyzeContent({

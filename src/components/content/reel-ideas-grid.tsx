@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Wand2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -84,38 +85,55 @@ export function ReelIdeasGrid() {
         </LiquidButton>
       </Card>
 
-      {ideas.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {ideas.map((idea, i) => (
-            <Card key={i} className="flex flex-col gap-3 p-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">{idea.format}</p>
-              <h3 className="font-display text-base font-semibold">{idea.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Hook: </span>
-                {idea.hook}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">Angle: </span>
-                {idea.angle}
-              </p>
-              {idea.suggestedStructure.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                  {idea.suggestedStructure.map((step, j, arr) => (
-                    <React.Fragment key={j}>
-                      <span className="rounded-full bg-white/[0.06] px-2 py-0.5">{step}</span>
-                      {j < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-              <p className="mt-auto text-sm">
-                <span className="font-medium">CTA: </span>
-                {idea.cta}
-              </p>
-            </Card>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {ideas.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          >
+            {ideas.map((idea, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.05, ease: "easeOut" }}
+              >
+                <Card className="flex h-full flex-col gap-3 p-5 transition-colors hover:border-white/20">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    {idea.format}
+                  </p>
+                  <h3 className="font-display text-base font-semibold">{idea.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Hook: </span>
+                    {idea.hook}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Angle: </span>
+                    {idea.angle}
+                  </p>
+                  {idea.suggestedStructure.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      {idea.suggestedStructure.map((step, j, arr) => (
+                        <React.Fragment key={j}>
+                          <span className="rounded-full bg-white/[0.06] px-2 py-0.5">{step}</span>
+                          {j < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-auto text-sm">
+                    <span className="font-medium">CTA: </span>
+                    {idea.cta}
+                  </p>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

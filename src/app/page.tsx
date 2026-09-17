@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Video, ImageIcon, MessageSquareText, Wand2 } from "lucide-react";
 import { UploadZone, type SelectedFile, type SourceKind } from "@/components/content/upload-zone";
 import { AnalysisProgress, type ProcessingStep } from "@/components/content/analysis-progress";
 import { Input } from "@/components/ui/input";
@@ -98,7 +99,7 @@ export default function AnalyzePage() {
           image:
             selectedFile?.kind === "image" && selectedFile.imageBase64
               ? {
-                  mediaType: selectedFile.file.type,
+                  mediaType: selectedFile.imageMediaType ?? selectedFile.file.type,
                   base64Data: selectedFile.imageBase64,
                 }
               : null,
@@ -133,11 +134,15 @@ export default function AnalyzePage() {
     setResult(null);
     setSelectedFile(null);
     setRawText("");
+    setUrl("");
+    setSourceKind("file");
     setTitle("");
     setContentType("");
     setPlatform("");
     setGoal("");
     setTopic("");
+    setUploadError(null);
+    setSubmitError(null);
   };
 
   if (isProcessing) {
@@ -147,7 +152,12 @@ export default function AnalyzePage() {
   if (result) {
     const { analysis } = result;
     return (
-      <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 pb-20 sm:px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="mx-auto max-w-3xl space-y-8 px-4 py-10 pb-20 sm:px-6"
+      >
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-xl font-bold">{title}</h1>
@@ -273,18 +283,43 @@ export default function AnalyzePage() {
             onUpdate={(nextContentIdeas) => setResult({ analysis: { ...analysis, nextContentIdeas } })}
           />
         </Card>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8 px-4 py-10 pb-20 sm:px-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold">Upload your content</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className="mx-auto max-w-3xl space-y-8 px-4 py-10 pb-20 sm:px-6"
+    >
+      <div className="text-center sm:text-left">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 sm:mx-0">
+          <Wand2 className="h-5 w-5 text-primary" />
+        </div>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl">
+          Upload your content
+        </h1>
+        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
           Analyze videos, reels, images, carousels and long-form content with AI. Nothing is
           saved — this runs entirely in your session.
         </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+          {[
+            { icon: Video, label: "Video & Reels" },
+            { icon: ImageIcon, label: "Images & Carousels" },
+            { icon: MessageSquareText, label: "Captions & Copy" },
+          ].map((chip) => (
+            <span
+              key={chip.label}
+              className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-surface-card px-3 py-1.5 text-xs text-muted-foreground"
+            >
+              <chip.icon className="h-3.5 w-3.5 text-primary" />
+              {chip.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <Card className="p-6">
@@ -301,8 +336,15 @@ export default function AnalyzePage() {
         />
       </Card>
 
-      {sourceKind !== "url" && (selectedFile || rawText.trim().length > 0) && (
-        <Card className="space-y-5 p-6">
+      <AnimatePresence>
+        {sourceKind !== "url" && (selectedFile || rawText.trim().length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          >
+      <Card className="space-y-5 p-6">
           <h2 className="font-display text-lg font-semibold">Content details</h2>
 
           <Input
@@ -359,8 +401,10 @@ export default function AnalyzePage() {
           >
             Analyze Content
           </LiquidButton>
-        </Card>
-      )}
-    </div>
+      </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

@@ -41,7 +41,14 @@ const goalValues = GOALS.map((g) => g.value) as [string, ...string[]];
 export const ACCEPTED_VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm", "video/x-m4v"];
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const ACCEPTED_TEXT_TYPES = ["text/plain", "text/markdown"];
-export const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB — everything travels in the request body, nothing is stored server-side.
+
+// Video files never leave the browser (only client-extracted duration/thumbnail
+// are used), so there is no practical size cap for them. Images, however, are
+// base64-encoded and sent inside the /api/analyze request body, and Vercel's
+// serverless functions hard-cap the request body at 4.5MB on every plan — this
+// is not configurable. Base64 inflates size by ~33%, so the raw file is capped
+// at 3MB (≈4MB encoded), leaving headroom for the rest of the JSON payload.
+export const MAX_IMAGE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB raw ≈ 4MB base64
 
 export const AnalyzeRequestSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -54,7 +61,7 @@ export const AnalyzeRequestSchema = z.object({
   image: z
     .object({
       mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
-      base64Data: z.string().max(20_000_000),
+      base64Data: z.string().max(4_400_000), // matches MAX_IMAGE_SIZE_BYTES once base64-encoded, plus a small margin
     })
     .optional()
     .nullable(),
