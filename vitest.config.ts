@@ -13,7 +13,7 @@ export default defineConfig({
     coverage: {
       reporter: ["text", "json", "html"],
       include: ["src/lib/**/*.ts"],
-      exclude: ["src/lib/types/**", "src/lib/supabase/**"],
+      exclude: ["src/lib/ai/**"],
     },
   },
   resolve: {

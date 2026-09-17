@@ -1,103 +1,88 @@
 # Content Intelligence
 
-AI-powered content analysis for social and marketing content. Upload reels,
-long-form video, images, carousels, ads or written copy and get an honest,
-structured breakdown: scores, strengths/weaknesses, hook analysis, retention
-risk, structure, visual signals, CTA effectiveness, concrete recommendations,
-and next-content ideas.
+AI-powered content analysis for social and marketing content — no accounts,
+no database, nothing persisted. Two stateless tools:
 
-This is a working application, not a mockup: real Supabase auth/storage/DB
-with RLS, a real Anthropic Claude analysis pipeline behind a swappable
-provider abstraction, and a persisted, drag-and-drop dashboard.
+- **`/`** — upload a file, paste text, or paste a caption, and get an honest,
+  structured AI analysis: scores, strengths/weaknesses, hook analysis,
+  retention risk, structure, visual analysis (real vision analysis for
+  images), CTA effectiveness, concrete recommendations, and next-content
+  ideas.
+- **`/ideas`** — fill in a lightweight creator profile (niche, audience,
+  tone, goals) and generate a grid of reel ideas from it.
+
+Every request is processed and returned in the same round trip. Nothing is
+written to a database or file storage — refresh the page and it's gone. This
+was a deliberate simplification: no login, no Supabase, no dashboard, no
+history.
 
 ## Architecture
 
 - **Framework**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS.
-- **Data**: Supabase (Postgres + Auth + Storage), all tables behind Row Level
-  Security — a user can only ever see their own rows. See
-  `supabase/migrations/`.
 - **AI layer**: fully decoupled behind `/lib/ai/provider.ts`. The app calls
   `getAIProvider().generateJSON(...)`; today that resolves to an Anthropic
   Claude adapter, controlled by `AI_PROVIDER` / `ANTHROPIC_MODEL` env vars.
   Swapping to OpenAI or Gemini means implementing `AIProvider` for that
   vendor and adding one branch to the factory — nothing else in the app
   changes. Prompts live in `/lib/ai/prompts.ts` and are versioned
-  (`CONTENT_ANALYSIS_PROMPT_VERSION`, etc.); every analysis row stores the
-  `model` and `prompt_version` that produced it.
+  (`CONTENT_ANALYSIS_PROMPT_VERSION`, etc.).
 - **Analysis schema**: `/lib/ai/schemas.ts` defines a Zod schema the model's
   JSON response must satisfy. `analyzeContent()` validates the response and
   retries once with a corrective prompt if it doesn't match.
-- **Video processing**: `/lib/media/process-video.ts` documents why heavy
-  video processing (thumbnailing, frame extraction, transcription) does not
-  belong inside a Vercel serverless function, and defines a
-  `VideoProcessingAdapter` interface for a future external worker. Today it
-  honestly reports which steps were skipped rather than fabricating data.
-  Video duration and a poster thumbnail *are* generated for real, client-side
-  in the browser at upload time (via `<video>` + `<canvas>`), which needs no
-  server compute.
-- **Honesty by design**: every analysis record has `data_completeness`
-  (`content_only` vs `with_metrics`). Scores are always framed as "AI content
-  potential" unless real performance metrics were provided. The app never
-  claims a specific real-world outcome (views, virality, etc.).
+- **Real vision analysis for images**: when the uploaded file is an image,
+  its bytes are base64-encoded in the browser and sent straight to Claude's
+  multimodal API (`ImageInput` in `provider.ts`) — the model genuinely looks
+  at the picture. Video is analyzed from metadata and any pasted
+  caption/transcript only; the app does not fabricate visual analysis of a
+  video it hasn't been shown, and says so explicitly in the response.
+- **Nothing is stored server-side.** File bytes and text live only in the
+  request body of the API call that analyzes them; the response goes
+  straight back to the browser and is kept in React state for that page
+  session only.
+- **Honesty by design**: every analysis response includes `dataDisclaimer`.
+  Scores are always framed as "AI content potential" — the app never claims
+  a specific real-world outcome (views, virality, etc.).
 
-### Key architectural decisions
+## Pages
 
-- **Storage is private, not public.** The `content` bucket has RLS scoped to
-  `{user_id}/...` folders and files are served via short-lived signed URLs
-  (`getSignedContentUrl`), not public URLs.
-- **Uploads go client → Supabase Storage directly**, then the server only
-  persists metadata. This avoids routing large video files through a
-  serverless function body-size limit.
-- **Recommendations and next-content ideas are stored as their own tables**
-  (not just JSON inside the analysis row) so they can be regenerated
-  independently ("Generate Recommendations" / "Create Next Content") without
-  re-running the full analysis.
-- **Reel Ideas (profile-based)**: in addition to per-content "next content
-  ideas", `/ideas` generates a grid of reel ideas from a lightweight creator
-  profile (niche, audience, tone, goals) stored on `profiles` — independent
-  of any single analyzed piece. See `profile_reel_ideas` table and
-  `/lib/ai/generate-profile-reel-ideas.ts`.
+- `/` — the content analyzer (upload/paste → metadata form → results).
+- `/ideas` — the reel-ideas generator from a creator profile.
+
+## API routes
+
+- `POST /api/analyze` — runs a full content analysis. Body: title,
+  contentType, platform, goal, topic, rawText, durationSeconds, and
+  optionally `image: { mediaType, base64Data }`. Returns the full analysis.
+- `POST /api/recommendations` — regenerates recommendations from an existing
+  analysis result (used by the "Generate Recommendations" button).
+- `POST /api/ideas` — regenerates next-content ideas from an existing
+  analysis result (used by the "Create Next Content" button).
+- `POST /api/reel-ideas` — generates reel ideas from a creator profile.
+
+None of these read or write a database — they're pure functions over their
+request body.
 
 ## Installation
 
 ```bash
 npm install
 cp .env.example .env.local
-# fill in .env.local, see below
+# fill in ANTHROPIC_API_KEY, see below
 npm run dev
 ```
 
 ## Environment variables
 
-See `.env.example`. Required:
+See `.env.example`.
 
 | Variable | Notes |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. Public. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key. Public. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only. Used by the demo seed script. |
 | `AI_PROVIDER` | `anthropic` (default; only implemented provider today). |
-| `ANTHROPIC_API_KEY` | Server-only. Never sent to the browser. |
+| `ANTHROPIC_API_KEY` | Server-only. Never sent to the browser. Required for `/api/analyze`, `/api/recommendations`, `/api/ideas`, `/api/reel-ideas` to work. |
 | `ANTHROPIC_MODEL` | e.g. `claude-sonnet-5`. |
 
 No API key is ever imported into a client component — all AI calls happen
 inside API routes / server code (`src/app/api/**`, `src/lib/ai/**`).
-
-## Supabase setup
-
-1. Create a Supabase project.
-2. Run the migrations in `supabase/migrations/` in order (via the SQL editor,
-   or `supabase db push` with the CLI). They create every table, RLS policy,
-   and the private `content` storage bucket.
-3. Copy the project URL / anon key / service role key into `.env.local`.
-
-## Database migrations
-
-- `0001_content_intelligence_schema.sql` — profiles, campaigns, content_items,
-  content_assets, content_analysis, content_metrics, recommendations,
-  content_ideas, dashboard_layouts, storage bucket + policies.
-- `0002_profile_reel_ideas.sql` — creator profile fields on `profiles` +
-  `profile_reel_ideas` table for the `/ideas` page.
 
 ## Running locally
 
@@ -105,19 +90,8 @@ inside API routes / server code (`src/app/api/**`, `src/lib/ai/**`).
 npm run dev
 ```
 
-Visit `http://localhost:3000`, register an account, and upload your first
-piece of content from `/content/new`.
-
-## Demo / seed data
-
-```bash
-npm run seed:demo
-```
-
-Creates (or reuses) a dedicated demo user and inserts several fully-analyzed
-demo content items flagged `is_demo = true`. Demo data is never mixed into a
-real user's account and is safe to re-run or delete. Requires
-`SUPABASE_SERVICE_ROLE_KEY`.
+Visit `http://localhost:3000`, upload or paste a piece of content, and hit
+**Analyze Content**.
 
 ## AI configuration
 
@@ -142,22 +116,25 @@ builds clean with no TypeScript errors. To deploy:
 
 1. Push this repo to GitHub.
 2. Import it into Vercel.
-3. Set the environment variables from `.env.example` in the Vercel project
-   settings.
+3. Set `AI_PROVIDER`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` in the Vercel
+   project's environment variables.
 4. Deploy.
 
-No secrets are hardcoded anywhere in the codebase.
+No secrets are hardcoded anywhere in the codebase. The app works without
+`ANTHROPIC_API_KEY` set too — every page loads, only the AI calls return a
+clear error until the key is added.
 
 ## Future integrations
 
-- **URL analysis** (Instagram/TikTok/YouTube): the upload flow has a "URL"
-  tab already in place; it intentionally does not scrape these platforms.
-  Once official APIs are wired up, `source_kind: 'url'` content items are
-  ready to be processed the same way file/text content is today.
-- **Video worker**: `/lib/media/process-video.ts` defines
-  `VideoProcessingAdapter` for thumbnailing, frame extraction and
-  transcription. Wire up a real implementation (a queue-triggered worker, or
-  a managed API like Mux/AssemblyAI) and swap it into
-  `getVideoProcessingAdapter()` — nothing upstream changes.
+- **URL analysis** (Instagram/TikTok/YouTube): intentionally not built —
+  scraping these platforms without an official API is fragile and against
+  most platforms' terms. The tool accepts file uploads and pasted text
+  instead.
+- **Persistence / accounts**: this version is deliberately stateless. A
+  previous iteration of this project used Supabase for auth, a Postgres
+  database with Row Level Security, and private file storage, with a
+  dashboard, content library, compare and insights pages. That code is not
+  in this version; if you want history/accounts back, that's a separate,
+  larger project.
 - **Additional AI providers**: OpenAI/Gemini adapters are stubbed in
   `/lib/ai/provider.ts` and throw `not implemented` until wired up.

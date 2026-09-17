@@ -1,4 +1,4 @@
-import { getAIProvider, extractJSON } from "./provider";
+import { getAIProvider, extractJSON, type ImageInput } from "./provider";
 import {
   CONTENT_ANALYSIS_PROMPT_VERSION,
   CONTENT_ANALYSIS_SYSTEM_PROMPT,
@@ -17,6 +17,8 @@ export interface AnalyzeContentInput {
   hasVideo: boolean;
   hasImage: boolean;
   durationSeconds: number | null;
+  /** Real image bytes for vision analysis, when the content is an image. */
+  image?: ImageInput;
 }
 
 export interface AnalyzeContentOutput {
@@ -42,6 +44,7 @@ export async function analyzeContent(
       system: CONTENT_ANALYSIS_SYSTEM_PROMPT,
       prompt: extraInstruction ? `${prompt}\n\n${extraInstruction}` : prompt,
       maxTokens: 4096,
+      images: input.image ? [input.image] : undefined,
     });
     const json = extractJSON(raw);
     return JSON.parse(json);

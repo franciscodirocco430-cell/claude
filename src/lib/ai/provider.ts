@@ -7,10 +7,18 @@
  * the factory — nothing else in the app needs to change.
  */
 
+export interface ImageInput {
+  mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  base64Data: string;
+}
+
 export interface GenerateJSONParams {
   system: string;
   prompt: string;
   maxTokens?: number;
+  /** Optional images for real vision analysis (Claude is multimodal). Only
+   * used when the caller actually has image bytes — never fabricated. */
+  images?: ImageInput[];
 }
 
 export interface AIProvider {
@@ -42,13 +50,28 @@ class AnthropicProvider implements AIProvider {
     return this.client;
   }
 
-  async generateJSON({ system, prompt, maxTokens = 4096 }: GenerateJSONParams): Promise<string> {
+  async generateJSON({ system, prompt, maxTokens = 4096, images }: GenerateJSONParams): Promise<string> {
     const client = await this.getClient();
+
+    const content: import("@anthropic-ai/sdk").default.Messages.MessageParam["content"] = images?.length
+      ? [
+          ...images.map((img) => ({
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: img.mediaType,
+              data: img.base64Data,
+            },
+          })),
+          { type: "text" as const, text: prompt },
+        ]
+      : prompt;
+
     const message = await client.messages.create({
       model: this.model,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content }],
     });
 
     const textBlock = message.content.find((block) => block.type === "text");

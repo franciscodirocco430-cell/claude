@@ -21,6 +21,20 @@ export interface SelectedFile {
   previewUrl: string;
   durationSeconds: number | null;
   thumbnailDataUrl: string | null;
+  /** base64 (no data: prefix) — only set for images, used for real vision analysis. */
+  imageBase64: string | null;
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 interface UploadZoneProps {
@@ -118,14 +132,17 @@ export function UploadZone({
         previewUrl: URL.createObjectURL(file),
         durationSeconds: duration,
         thumbnailDataUrl: thumbnail,
+        imageBase64: null,
       });
     } else if (kind === "image") {
+      const imageBase64 = await readFileAsBase64(file);
       onFileSelected({
         file,
         kind,
         previewUrl: URL.createObjectURL(file),
         durationSeconds: null,
         thumbnailDataUrl: null,
+        imageBase64,
       });
     } else {
       const text = await file.text();
@@ -136,6 +153,7 @@ export function UploadZone({
         previewUrl: "",
         durationSeconds: null,
         thumbnailDataUrl: null,
+        imageBase64: null,
       });
     }
   };

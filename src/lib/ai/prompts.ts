@@ -85,6 +85,12 @@ Duration (seconds): ${durationSeconds ?? "unknown"}
 CONTENT TEXT / TRANSCRIPT
 ${transcriptOrText ?? "(No text or transcript was available for this content. Base your analysis only on the metadata above and say so explicitly in relevant sections — do not invent spoken or written content.)"}
 
-If visual analysis does not apply (no image/video was provided), set "visualAnalysis.applicable" to false and leave numeric fields null, explaining in "recommendations" that no visual asset was analyzed.
+${
+  hasImage
+    ? "An actual image of this content is attached to this message. Base visualAnalysis on what you can genuinely see in it — real composition, contrast, text readability, etc. Set visualAnalysis.applicable to true."
+    : hasVideo
+    ? "No frame or thumbnail image was provided for this video — you cannot see it. Set visualAnalysis.applicable to false and say explicitly in recommendations that no visual asset was analyzed, this app does not fabricate visual analysis of video it hasn't been shown."
+    : "No image was provided. Set visualAnalysis.applicable to false and leave numeric fields null."
+}
 Return ONLY the JSON object.`;
 }

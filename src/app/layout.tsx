@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Syne } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toaster";
+import { SiteHeader } from "@/components/layout/site-header";
 import "./globals.css";
 
 const inter = Inter({
@@ -57,7 +58,10 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <SiteHeader />
+            {children}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

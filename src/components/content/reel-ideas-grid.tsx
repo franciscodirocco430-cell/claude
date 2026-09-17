@@ -1,38 +1,42 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Wand2, ArrowRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { useToast } from "@/components/ui/toast";
-import { EmptyState } from "@/components/shared/empty-state";
-import type { Database } from "@/lib/types/database.types";
+import type { ContentIdea } from "@/lib/ai/schemas";
 
-type ProfileReelIdea = Database["public"]["Tables"]["profile_reel_ideas"]["Row"];
-
-export function ReelIdeasGrid({
-  hasNiche,
-  ideas,
-}: {
-  hasNiche: boolean;
-  ideas: ProfileReelIdea[];
-}) {
-  const router = useRouter();
+export function ReelIdeasGrid() {
   const { toast } = useToast();
+  const [niche, setNiche] = React.useState("");
+  const [targetAudience, setTargetAudience] = React.useState("");
+  const [contentTone, setContentTone] = React.useState("");
+  const [contentGoals, setContentGoals] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [ideas, setIdeas] = React.useState<ContentIdea[]>([]);
 
   const handleGenerate = async () => {
+    if (!niche.trim()) {
+      toast({ type: "error", title: "Add your niche first" });
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch("/api/profile/reel-ideas", { method: "POST" });
+      const res = await fetch("/api/reel-ideas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ niche, targetAudience, contentTone, contentGoals }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Failed to generate reel ideas");
       }
+      const data = await res.json();
+      setIdeas(data.ideas);
       toast({ type: "success", title: "New reel ideas ready" });
-      router.refresh();
     } catch (err) {
       toast({
         type: "error",
@@ -44,34 +48,46 @@ export function ReelIdeasGrid({
     }
   };
 
-  if (!hasNiche) {
-    return (
-      <EmptyState
-        title="Set up your creator profile first"
-        description="Add your niche, audience, tone and goals in Settings so we can generate reel ideas tailored to you."
-        ctaHref="/settings"
-        ctaLabel="Go to Settings"
-      />
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
+    <div className="space-y-8">
+      <Card className="space-y-4 p-6">
+        <h2 className="font-display text-lg font-semibold">Your creator profile</h2>
+        <p className="text-sm text-muted-foreground">
+          Nothing here is saved — fill it in each time, or keep this tab open while you work.
+        </p>
+        <Input
+          label="Niche"
+          value={niche}
+          onChange={(e) => setNiche(e.target.value)}
+          placeholder="e.g. personal finance for freelancers"
+        />
+        <Textarea
+          label="Target audience (optional)"
+          value={targetAudience}
+          onChange={(e) => setTargetAudience(e.target.value)}
+          placeholder="Who are you creating for?"
+        />
+        <Input
+          label="Tone (optional)"
+          value={contentTone}
+          onChange={(e) => setContentTone(e.target.value)}
+          placeholder="e.g. direct, playful, authoritative"
+        />
+        <Textarea
+          label="Goals (optional)"
+          value={contentGoals}
+          onChange={(e) => setContentGoals(e.target.value)}
+          placeholder="What are you trying to achieve with your content?"
+        />
         <LiquidButton icon={<Wand2 className="h-4 w-4" />} loading={loading} onClick={handleGenerate}>
           Generate Reel Ideas
         </LiquidButton>
-      </div>
+      </Card>
 
-      {ideas.length === 0 ? (
-        <EmptyState
-          title="No reel ideas yet"
-          description="Generate a batch of reel ideas based on your creator profile."
-        />
-      ) : (
+      {ideas.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {ideas.map((idea) => (
-            <Card key={idea.id} className="flex flex-col gap-3 p-5">
+          {ideas.map((idea, i) => (
+            <Card key={i} className="flex flex-col gap-3 p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary">{idea.format}</p>
               <h3 className="font-display text-base font-semibold">{idea.title}</h3>
               <p className="text-sm text-muted-foreground">
@@ -82,12 +98,12 @@ export function ReelIdeasGrid({
                 <span className="font-medium text-foreground">Angle: </span>
                 {idea.angle}
               </p>
-              {Array.isArray(idea.suggested_structure_json) && idea.suggested_structure_json.length > 0 && (
+              {idea.suggestedStructure.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                  {(idea.suggested_structure_json as string[]).map((step, i, arr) => (
-                    <React.Fragment key={i}>
+                  {idea.suggestedStructure.map((step, j, arr) => (
+                    <React.Fragment key={j}>
                       <span className="rounded-full bg-white/[0.06] px-2 py-0.5">{step}</span>
-                      {i < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
+                      {j < arr.length - 1 && <ArrowRight className="h-3 w-3" />}
                     </React.Fragment>
                   ))}
                 </div>
@@ -100,14 +116,6 @@ export function ReelIdeasGrid({
           ))}
         </div>
       )}
-
-      <p className="text-center text-xs text-muted-foreground">
-        Want ideas from a specific piece instead?{" "}
-        <Link href="/content" className="text-primary hover:underline">
-          Analyze it first
-        </Link>
-        .
-      </p>
     </div>
   );
 }
