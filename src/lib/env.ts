@@ -23,6 +23,11 @@ export const serverEnvSchema = z.object({
   AI_PRICE_FAST_OUTPUT_PER_MTOK: optionalNumber,
   AI_PRICE_SMART_INPUT_PER_MTOK: optionalNumber,
   AI_PRICE_SMART_OUTPUT_PER_MTOK: optionalNumber,
+  /** Esfuerzo de razonamiento por tier ("none" = no enviar el parámetro, para modelos viejos). */
+  AI_EFFORT_FAST: z.enum(["none", "low", "medium", "high", "xhigh", "max"]).default("low"),
+  AI_EFFORT_SMART: z.enum(["none", "low", "medium", "high", "xhigh", "max"]).default("medium"),
+  /** Solo desarrollo y tests: respuestas simuladas, sin llamar a la API. Prohibido en producción. */
+  AI_FAKE: z.enum(["true", "false"]).default("false"),
 
   /** Fuentes de datos públicos: deshabilitadas salvo "true" explícito (y costo verificado). */
   PROSPECT_SOURCE_GOOGLE_PLACES_ENABLED: z.enum(["true", "false"]).optional(),
@@ -31,9 +36,18 @@ export const serverEnvSchema = z.object({
 
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  /** Puerto opcional para el health check del worker (Render/Fly). */
+  WORKER_HEALTH_PORT: z.coerce.number().int().positive().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+/** Variables que necesita el worker (no usa Supabase Auth). */
+export const workerEnvSchema = serverEnvSchema.partial({
+  NEXT_PUBLIC_SUPABASE_URL: true,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
+  SUPABASE_SERVICE_ROLE_KEY: true,
+});
 
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
   const result = serverEnvSchema.safeParse(source);
@@ -65,4 +79,22 @@ export function getPublicEnv() {
     throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY");
   }
   return { supabaseUrl: url, supabaseAnonKey: anonKey };
+}
+
+export type WorkerEnv = z.infer<typeof workerEnvSchema>;
+
+let cachedWorker: WorkerEnv | undefined;
+
+export function getWorkerEnv(): WorkerEnv {
+  if (!cachedWorker) {
+    const result = workerEnvSchema.safeParse(process.env);
+    if (!result.success) {
+      const issues = result.error.issues
+        .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
+        .join("\n");
+      throw new Error(`Variables de entorno inválidas:\n${issues}`);
+    }
+    cachedWorker = result.data;
+  }
+  return cachedWorker;
 }

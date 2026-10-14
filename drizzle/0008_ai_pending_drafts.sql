@@ -1,0 +1,1 @@
+ALTER TABLE "prospects" ADD COLUMN "ai_pending_drafts" integer DEFAULT 0 NOT NULL;

@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const alias = { "@": resolve(root, "./src") };
+const alias = { "@": resolve(root, "./src"), "@prompts": resolve(root, "./prompts") };
 
 export default defineConfig({
   resolve: { alias },
@@ -14,7 +14,12 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["src/**/*.test.ts", "worker/**/*.test.ts", "tests/unit/**/*.test.ts"],
+          include: [
+            "src/**/*.test.ts",
+            "prompts/**/*.test.ts",
+            "worker/**/*.test.ts",
+            "tests/unit/**/*.test.ts",
+          ],
         },
       },
       {

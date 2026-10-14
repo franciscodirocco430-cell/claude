@@ -14,13 +14,16 @@ if (!testDbUrl) throw new Error("Los tests e2e necesitan TEST_DATABASE_URL.");
 const e2eDbUrl = new URL(testDbUrl);
 e2eDbUrl.pathname = "/setter_e2e";
 
+const workerHealthPort = Number(process.env.E2E_WORKER_HEALTH_PORT ?? 3199);
+const encryptionKey = randomBytes(32).toString("base64");
+
 const appEnv = {
   APP_URL: `http://localhost:${port}`,
   DATABASE_URL: e2eDbUrl.toString(),
   NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${authPort}`,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "e2e-anon-key",
   SUPABASE_SERVICE_ROLE_KEY: "e2e-service-role-key",
-  TOKEN_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
+  TOKEN_ENCRYPTION_KEY: encryptionKey,
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
@@ -50,6 +53,21 @@ export default defineConfig({
       command: "pnpm exec tsx e2e/support/mock-gotrue.ts",
       url: `http://127.0.0.1:${authPort}/health`,
       env: { TEST_DATABASE_URL: testDbUrl, MOCK_GOTRUE_PORT: String(authPort) },
+      reuseExistingServer: !!process.env.E2E_REUSE_SERVER,
+      timeout: 60_000,
+    },
+    {
+      // Worker real con IA simulada: procesa los jobs de investigación y redacción.
+      command: "pnpm exec tsx worker/index.ts",
+      url: `http://127.0.0.1:${workerHealthPort}`,
+      env: {
+        DATABASE_URL: e2eDbUrl.toString(),
+        TOKEN_ENCRYPTION_KEY: encryptionKey,
+        AI_FAKE: "true",
+        WORKER_HEALTH_PORT: String(workerHealthPort),
+        WORKER_POLL_INTERVAL_MS: "300",
+        NODE_ENV: "test",
+      },
       reuseExistingServer: !!process.env.E2E_REUSE_SERVER,
       timeout: 60_000,
     },

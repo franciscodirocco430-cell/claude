@@ -84,7 +84,7 @@ src/db/rls.ts       withUserContext(): consultas Drizzle con RLS del usuario.
 src/server/         Lógica de negocio pura y testeable (compliance, jobs, pipeline…).
 src/lib/            Utilidades transversales (env, crypto).
 worker/             Proceso de jobs en segundo plano.
-prompts/            Prompts versionados (Fase 3).
+prompts/            Prompts versionados (`<id>/vN.ts`); el puntero activo está en prompts/index.ts.
 drizzle/            Migraciones generadas + custom SQL.
 scripts/db/         migrate, seed, shim de Supabase.
 tests/unit|db/      Tests transversales. Los unitarios de un módulo van al lado (*.test.ts).
@@ -170,11 +170,38 @@ e2e/                Playwright.
 - **CSV**: hasta 5000 filas y 2 MB; el servidor vuelve a parsear (no confía en el
   navegador). Body de server actions: 3 MB (`next.config.ts`).
 
+## IA: investigación y redacción
+
+- **Flujo**: "Preparar mensajes" (owner/admin, máx. 100 por clic) → job `research_prospect`
+  (tier FAST) → un job `draft_message` (tier SMART) por canal alcanzable → tareas en
+  `outreach_tasks` (`ready` o `failed` con motivo). No se dispara solo al importar: cada
+  prospecto cuesta llamadas a la API. Estado visible en `prospects.ai_status`.
+- **Pipeline** en `src/server/ai/pipeline.ts`; encolado en `src/server/ai/preparation.ts`
+  (transición de estado atómica: un doble clic no duplica). Fin de borradores con contador
+  atómico `ai_pending_drafts` (no mirar la tabla de jobs: hay carrera entre hermanos).
+- **Cliente** `AiClient` (`src/server/ai/client.ts`): SDK oficial, salida estructurada con
+  `zodOutputFormat`, rechazo (`refusal`) y corte (`max_tokens`) son errores no reintentables;
+  429/5xx sí. `FakeAiClient` para dev/tests (`AI_FAKE=true`, bloqueado en producción).
+- **Reglas por canal** (`src/server/ai/channel-rules.ts`): van al prompt Y se validan sobre
+  la salida (largo, sin links, sin marcadores). Si falla, un reintento con las correcciones;
+  si insiste, la tarea queda `failed`. Email: firma y link de baja los agrega
+  `composeEmailBody()` como marcadores (`{{firma}}`, `{{link_baja}}`), nunca la IA.
+- **Web del prospecto** (`src/server/research/website.ts`): fetch simple con robots.txt,
+  bloqueo de IPs internas en cada redirect (SSRF), sin dominios de redes sociales, timeout,
+  tope de 1 MB y solo HTML. El texto de terceros va en etiquetas (`<sitio_web>`) y el prompt
+  indica tratarlo como datos (defensa ante prompt injection).
+- **Prompts**: cambiar un texto = nueva versión (`v2.ts`) + mover el puntero. `ai_runs.prompt_version`
+  guarda `id@version`. Ejemplos few-shot: hasta 3 por canal en `campaigns.few_shot_examples`.
+- **Auditoría**: cada llamada (éxito o error) → `recordAiRun()` con tokens y costo estimado
+  (precios por env; caché: escritura 1,25×, lectura 0,1×).
+- **Errores permanentes**: `PermanentJobError` pasa el job a `dead` sin reintentos.
+
 ## Tests e2e sin Docker
 
 `e2e/support/mock-gotrue.ts` emula lo mínimo de Supabase Auth (signup con autoconfirm,
 login, refresh, `/user`, logout) y recrea la base `setter_e2e` (shim + migraciones).
-Playwright levanta el mock y la app (`pnpm build && pnpm start`). Si tenés Supabase
+Playwright levanta el mock, el worker (con `AI_FAKE=true` y health check) y la app
+(`pnpm build && pnpm start`). `E2E_REUSE_SERVER=1` reutiliza servidores ya levantados. Si tenés Supabase
 local, los mismos specs deberían pasar apuntando a él, pero eso todavía no se verificó.
 
 ## Supabase local vs. Postgres pelado

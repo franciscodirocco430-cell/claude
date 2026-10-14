@@ -5,11 +5,19 @@ import { z } from "zod";
 import { withUserContext } from "@/db/rls";
 import type { ActionState } from "@/server/actions";
 import { requireAppContext } from "@/server/auth/session";
-import { campaignInputSchema, issuesByPath } from "@/server/campaigns/schemas";
+import { queueCampaignPreparation, queueDraftRegeneration } from "@/server/ai/preparation";
+import { isAdminRole } from "@/server/auth/permissions";
+import {
+  campaignInputSchema,
+  fewShotExamplesSchema,
+  issuesByPath,
+} from "@/server/campaigns/schemas";
 import {
   changeCampaignStatus,
   createCampaign,
+  getProspectDetail,
   updateCampaign,
+  updateFewShotExamples,
   type StatusAction,
 } from "@/server/campaigns/service";
 import { getDb } from "@/server/db";
@@ -229,4 +237,124 @@ export async function addProspectAction(
     return { status: "error", message, values };
   }
   redirect(`/campanas/${campaignId}?agregado=1`);
+}
+
+// ───────────────────────────── IA (Fase 3) ─────────────────────────────
+
+const prepareSchema = z.object({ campaignId: z.uuid() });
+
+/** Encola investigación + borradores para los prospectos pendientes (solo owner/admin: tiene costo). */
+export async function prepareCampaignAction(
+  _prev: ActionState<{ queued: number }>,
+  formData: FormData,
+): Promise<ActionState<{ queued: number }>> {
+  const ctx = await requireAppContext();
+  if (!isAdminRole(ctx.role)) {
+    return { status: "error", message: "Solo owners y admins pueden preparar mensajes en lote." };
+  }
+  const parsed = prepareSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: "Campaña inválida." };
+  try {
+    const result = await queueCampaignPreparation(getDb(), {
+      organizationId: ctx.organizationId,
+      campaignId: parsed.data.campaignId,
+    });
+    return {
+      status: "success",
+      message:
+        result.queued === 0
+          ? "No hay prospectos pendientes."
+          : `Preparando ${result.queued} ${result.queued === 1 ? "prospecto" : "prospectos"}.`,
+      data: result,
+    };
+  } catch (error) {
+    return { status: "error", message: userMessage(error) };
+  }
+}
+
+const prospectActionSchema = z.object({
+  campaignId: z.uuid(),
+  prospectId: z.uuid(),
+  channel: z.enum(["instagram", "facebook", "tiktok", "whatsapp", "email"]).optional(),
+});
+
+/** Vuelve a investigar un prospecto (y rehace sus borradores). */
+export async function reresearchProspectAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await requireAppContext();
+  const parsed = prospectActionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: "Datos inválidos." };
+  try {
+    const { queued } = await queueCampaignPreparation(getDb(), {
+      organizationId: ctx.organizationId,
+      campaignId: parsed.data.campaignId,
+      prospectIds: [parsed.data.prospectId],
+    });
+    if (queued === 0)
+      return { status: "error", message: "La IA ya está trabajando en este prospecto." };
+  } catch (error) {
+    return { status: "error", message: userMessage(error) };
+  }
+  return { status: "success" };
+}
+
+export async function regenerateDraftAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await requireAppContext();
+  const parsed = prospectActionSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success || !parsed.data.channel)
+    return { status: "error", message: "Datos inválidos." };
+  try {
+    // Verifica que el prospecto sea de esta organización y campaña antes de encolar.
+    const detail = await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
+      getProspectDetail(tx, {
+        organizationId: ctx.organizationId,
+        campaignId: parsed.data.campaignId,
+        prospectId: parsed.data.prospectId,
+      }),
+    );
+    if (!detail) return { status: "error", message: "El prospecto no existe." };
+    await queueDraftRegeneration(getDb(), {
+      organizationId: ctx.organizationId,
+      prospectId: parsed.data.prospectId,
+      channel: parsed.data.channel,
+    });
+  } catch (error) {
+    return { status: "error", message: userMessage(error) };
+  }
+  return { status: "success" };
+}
+
+export async function saveExamplesAction(input: {
+  campaignId: string;
+  examples: unknown;
+}): Promise<ActionState> {
+  const ctx = await requireAppContext();
+  if (!uuid.safeParse(input.campaignId).success)
+    return { status: "error", message: "Campaña inválida." };
+  const parsed = fewShotExamplesSchema.safeParse(input.examples);
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Revisá los ejemplos marcados.",
+      fieldErrors: issuesByPath(parsed.error),
+    };
+  }
+  try {
+    await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
+      updateFewShotExamples(tx, {
+        organizationId: ctx.organizationId,
+        actorRole: ctx.role,
+        id: input.campaignId,
+        examples: parsed.data,
+      }),
+    );
+  } catch (error) {
+    return { status: "error", message: userMessage(error) };
+  }
+  return { status: "success", message: "Ejemplos guardados." };
 }

@@ -146,3 +146,29 @@ export function emptyCampaign(): CampaignFormValues {
     dailyLimits: { ...DEFAULT_DAILY_LIMITS },
   };
 }
+
+export const MAX_EXAMPLES_PER_CHANNEL = 3;
+
+/** Ejemplos (few-shot) por canal, editables por campaña. */
+export const fewShotExamplesSchema = z
+  .array(
+    z.object({
+      channel: z.enum(CHANNELS),
+      context: z
+        .string()
+        .trim()
+        .max(200, { error: "El contexto puede tener hasta 200 caracteres." }),
+      message: trimmed(10, 1200, "El ejemplo"),
+    }),
+  )
+  .superRefine((items, ctx) => {
+    for (const ch of CHANNELS) {
+      if (items.filter((i) => i.channel === ch).length > MAX_EXAMPLES_PER_CHANNEL) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Máximo ${MAX_EXAMPLES_PER_CHANNEL} ejemplos por canal.`,
+        });
+      }
+    }
+  });
+export type FewShotExamplesInput = z.infer<typeof fewShotExamplesSchema>;

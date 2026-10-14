@@ -5,6 +5,14 @@ import { computeBackoffMs, type BackoffOptions } from "./backoff";
 
 export type Job = typeof jobs.$inferSelect;
 
+/** Error que no se arregla reintentando (datos inválidos, rechazo de la IA…): el job pasa a `dead`. */
+export class PermanentJobError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PermanentJobError";
+  }
+}
+
 export interface EnqueueInput {
   type: string;
   payload?: Record<string, unknown>;
@@ -102,7 +110,7 @@ export async function failJob(
   backoff: BackoffOptions = {},
 ): Promise<"retry" | "dead"> {
   const message = error instanceof Error ? error.message : String(error);
-  const exhausted = job.attempts >= job.maxAttempts;
+  const exhausted = job.attempts >= job.maxAttempts || error instanceof PermanentJobError;
   await db
     .update(jobs)
     .set(

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -6,6 +7,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
@@ -33,6 +35,9 @@ export const outreachTasks = pgTable(
     prospectId: uuid("prospect_id").notNull(),
     channel: channel("channel").notNull(),
     draftMessage: text("draft_message"),
+    /** Solo email: asunto del borrador. */
+    draftSubject: text("draft_subject"),
+    aiRunId: uuid("ai_run_id"),
     status: outreachTaskStatus("status").notNull().default("pending"),
     assignedTo: uuid("assigned_to").references(() => authUsers.id, { onDelete: "set null" }),
     dueAt: timestamp("due_at", { withTimezone: true }),
@@ -49,6 +54,10 @@ export const outreachTasks = pgTable(
       "set null",
     ),
     index("outreach_tasks_queue_idx").on(t.organizationId, t.assignedTo, t.status),
+    // Una sola tarea abierta por prospecto y canal: regenerar actualiza, no duplica.
+    uniqueIndex("outreach_tasks_open_unique")
+      .on(t.organizationId, t.prospectId, t.channel)
+      .where(sql`${t.status} in ('pending', 'ready')`),
     ...tenantPolicies("outreach_tasks", t.organizationId, MEMBER_WRITE),
   ],
 );

@@ -72,3 +72,13 @@ export const aiRunType = pgEnum("ai_run_type", [
 export const aiRunStatus = pgEnum("ai_run_status", ["ok", "error"]);
 
 export const jobStatus = pgEnum("job_status", ["queued", "running", "succeeded", "failed", "dead"]);
+
+/** Estado del trabajo de IA sobre un prospecto (investigación + borradores). */
+export const prospectAiStatus = pgEnum("prospect_ai_status", [
+  "idle",
+  "queued",
+  "researching",
+  "drafting",
+  "ready",
+  "error",
+]);

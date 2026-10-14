@@ -23,7 +23,14 @@ import {
   timestamps,
 } from "./_helpers";
 import { campaigns } from "./campaigns";
-import { channel, prospectSource, stageKind, suppressionKind, suppressionReason } from "./enums";
+import {
+  channel,
+  prospectAiStatus,
+  prospectSource,
+  stageKind,
+  suppressionKind,
+  suppressionReason,
+} from "./enums";
 import { organizations } from "./tenancy";
 
 const orgId = () =>
@@ -55,6 +62,10 @@ export const prospects = pgTable(
     whatsappOptInAt: timestamp("whatsapp_opt_in_at", { withTimezone: true }),
     whatsappOptInSource: text("whatsapp_opt_in_source"),
     ownerId: uuid("owner_id").references(() => authUsers.id, { onDelete: "set null" }),
+    aiStatus: prospectAiStatus("ai_status").notNull().default("idle"),
+    aiError: text("ai_error"),
+    /** Borradores de IA en curso: el último job que termina marca el prospecto como listo. */
+    aiPendingDrafts: integer("ai_pending_drafts").notNull().default(0),
     ...timestamps(),
   },
   (t) => [
@@ -104,8 +115,10 @@ export const prospectHandles = pgTable(
 );
 
 export interface ResearchSource {
-  url: string;
   kind: "user_input" | "csv" | "website" | "official_api";
+  url?: string;
+  /** Por qué no se pudo usar (ej. robots.txt lo prohíbe). */
+  skippedReason?: string;
 }
 
 export const researchNotes = pgTable(
@@ -119,6 +132,8 @@ export const researchNotes = pgTable(
     hooks: jsonb("hooks").$type<string[]>().notNull().default([]),
     sources: jsonb("sources").$type<ResearchSource[]>().notNull().default([]),
     aiRunId: uuid("ai_run_id"),
+    /** Job que la generó: si el job se reintenta, no se duplica la nota. */
+    jobId: uuid("job_id").unique(),
     ...createdAt(),
   },
   (t) => [

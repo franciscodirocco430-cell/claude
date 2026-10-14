@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
 import type { DbExecutor } from "@/db/rls";
 import type { campaignStatus } from "@/db/schema";
-import { campaigns, prospects } from "@/db/schema";
+import { campaigns, outreachTasks, prospectHandles, prospects, researchNotes } from "@/db/schema";
 import { isAdminRole, type Role } from "@/server/auth/permissions";
 import { DomainError } from "@/server/errors";
 import type { CampaignInput } from "./schemas";
@@ -174,6 +174,8 @@ export async function listCampaignProspects(
         website: prospects.website,
         source: prospects.source,
         whatsappOptIn: prospects.whatsappOptIn,
+        aiStatus: prospects.aiStatus,
+        aiError: prospects.aiError,
         createdAt: prospects.createdAt,
         // Ojo: en el SELECT, Drizzle no califica ${prospects.id} y dentro de la
         // subconsulta "id" se resolvería como h.id. Por eso va escrito a mano.
@@ -189,4 +191,54 @@ export async function listCampaignProspects(
     db.select({ n: count() }).from(prospects).where(filter),
   ]);
   return { rows, total: total?.n ?? 0, page, pageSize: PROSPECTS_PAGE_SIZE };
+}
+
+export async function updateFewShotExamples(
+  db: DbExecutor,
+  input: {
+    organizationId: string;
+    actorRole: Role;
+    id: string;
+    examples: Campaign["fewShotExamples"];
+  },
+) {
+  assertAdmin(input.actorRole);
+  const [row] = await db
+    .update(campaigns)
+    .set({ fewShotExamples: input.examples })
+    .where(and(eq(campaigns.id, input.id), eq(campaigns.organizationId, input.organizationId)))
+    .returning({ id: campaigns.id });
+  if (!row) throw new DomainError("not_found", "La campaña no existe.");
+}
+
+export async function getProspectDetail(
+  db: DbExecutor,
+  input: { organizationId: string; campaignId: string; prospectId: string },
+) {
+  const [prospect] = await db
+    .select()
+    .from(prospects)
+    .where(
+      and(
+        eq(prospects.id, input.prospectId),
+        eq(prospects.organizationId, input.organizationId),
+        eq(prospects.campaignId, input.campaignId),
+      ),
+    );
+  if (!prospect) return null;
+  const [handles, notes, tasks] = await Promise.all([
+    db.select().from(prospectHandles).where(eq(prospectHandles.prospectId, prospect.id)),
+    db
+      .select()
+      .from(researchNotes)
+      .where(eq(researchNotes.prospectId, prospect.id))
+      .orderBy(desc(researchNotes.createdAt))
+      .limit(1),
+    db
+      .select()
+      .from(outreachTasks)
+      .where(eq(outreachTasks.prospectId, prospect.id))
+      .orderBy(desc(outreachTasks.updatedAt)),
+  ]);
+  return { prospect, handles, research: notes[0] ?? null, tasks };
 }

@@ -40,12 +40,31 @@ describe("guardas de cumplimiento", () => {
   });
 
   it("no hay nombres de modelos de IA hardcodeados en el código", () => {
-    const offenders = ["src", "worker", "scripts"]
+    const offenders = ["src", "worker", "scripts", "prompts"]
       .flatMap((d) => sourceFiles(join(ROOT, d)))
       .filter((f) => !f.endsWith(".test.ts"))
       .filter((f) => /["'`]claude-[a-z0-9.-]+["'`]/i.test(readFileSync(f, "utf8")))
       .map((f) => relative(ROOT, f));
     expect(offenders).toEqual([]);
+  });
+
+  it("la investigación nunca accede a dominios de redes sociales", async () => {
+    const { isForbiddenSocialHost } = await import("@/server/research/url-safety");
+    for (const host of ["instagram.com", "www.facebook.com", "tiktok.com", "wa.me", "m.me"]) {
+      expect(isForbiddenSocialHost(host), host).toBe(true);
+    }
+  });
+
+  it("la IA simulada no se puede usar en producción", async () => {
+    const { createAiClient } = await import("@/server/ai/factory");
+    expect(() =>
+      createAiClient({
+        AI_FAKE: "true",
+        NODE_ENV: "production",
+        AI_EFFORT_FAST: "low",
+        AI_EFFORT_SMART: "medium",
+      } as never),
+    ).toThrow(/producción/);
   });
 
   it("playwright solo aparece en los tests e2e", () => {

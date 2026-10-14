@@ -1,6 +1,7 @@
 import {
   CheckCircle2,
   ChevronLeft,
+  MessageSquareQuote,
   ChevronRight,
   FileUp,
   Pencil,
@@ -9,7 +10,9 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AiStatusBadge } from "@/components/campaigns/ai-status-badge";
 import { CampaignStatusBadge, ChannelBadges } from "@/components/campaigns/campaign-badges";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
@@ -23,7 +26,9 @@ import { listCampaignProspects } from "@/server/campaigns/service";
 import type { Channel } from "@/server/compliance/channels";
 import { getDb } from "@/server/db";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
+import { countBusy, countPreparable } from "@/server/ai/preparation";
 import { loadCampaign } from "./load";
+import { PrepareButton } from "./prepare-button";
 import { StatusActions } from "./status-actions";
 
 export const metadata: Metadata = { title: "Campaña" };
@@ -65,6 +70,10 @@ export default async function CampaignPage({
       page: Number(page) || 1,
     }),
   );
+  const [preparable, busy] = await Promise.all([
+    countPreparable(getDb(), ctx.organizationId, campaign.id),
+    countBusy(getDb(), ctx.organizationId, campaign.id),
+  ]);
   const totalPages = Math.max(1, Math.ceil(list.total / list.pageSize));
   const pageHref = (p: number) =>
     `/campanas/${campaign.id}?${new URLSearchParams({ ...(q ? { q } : {}), page: String(p) })}`;
@@ -88,11 +97,22 @@ export default async function CampaignPage({
                   <Pencil aria-hidden /> Editar
                 </Link>
               </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/campanas/${campaign.id}/ejemplos`}>
+                  <MessageSquareQuote aria-hidden /> Ejemplos
+                </Link>
+              </Button>
               <StatusActions campaignId={campaign.id} status={campaign.status} />
             </div>
           ) : null
         }
       />
+      <AutoRefresh active={busy > 0} />
+      {busy > 0 ? (
+        <p className="text-muted-foreground mb-3 text-sm" role="status">
+          La IA está preparando {busy} {busy === 1 ? "prospecto" : "prospectos"}…
+        </p>
+      ) : null}
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <CampaignStatusBadge status={campaign.status} />
         <ChannelBadges channels={campaign.channels} />
@@ -111,7 +131,10 @@ export default async function CampaignPage({
               Prospectos <span className="text-muted-foreground">({list.total})</span>
             </h2>
             {archived ? null : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-start gap-2">
+                {isAdmin && campaign.status === "active" ? (
+                  <PrepareButton campaignId={campaign.id} pending={preparable} />
+                ) : null}
                 <Button asChild size="sm" variant="outline">
                   <Link href={`/campanas/${campaign.id}/importar`}>
                     <FileUp aria-hidden /> Importar CSV
@@ -153,9 +176,12 @@ export default async function CampaignPage({
               {list.rows.map((p) => (
                 <li key={p.id} className="grid gap-2 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">
+                    <Link
+                      href={`/campanas/${campaign.id}/prospectos/${p.id}`}
+                      className="block truncate font-medium underline-offset-4 hover:underline"
+                    >
                       {p.fullName ?? p.company ?? p.email ?? p.handles[0]?.handle ?? "Sin nombre"}
-                    </p>
+                    </Link>
                     <p className="text-muted-foreground truncate text-sm">
                       {[p.fullName ? p.company : null, p.email, p.phone]
                         .filter(Boolean)
@@ -163,6 +189,7 @@ export default async function CampaignPage({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1">
+                    <AiStatusBadge status={p.aiStatus} />
                     {p.handles.map((h) => (
                       <Badge key={`${h.channel}-${h.handle}`} variant="outline">
                         {CHANNEL_LABELS[h.channel as Channel]}: {h.handle}
