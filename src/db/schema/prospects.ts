@@ -220,3 +220,37 @@ export const suppressionList = pgTable(
     }),
   ],
 );
+
+/**
+ * Historial de etapas de cada lead (para métricas con fecha). Lo escribe un
+ * trigger sobre `lead_scores` (ver drizzle/0016_lead_stage_events.sql): ningún
+ * camino de código puede olvidarse de registrarlo. Solo lectura desde el cliente.
+ */
+export const leadStageEvents = pgTable(
+  "lead_stage_events",
+  {
+    id: id(),
+    organizationId: orgId(),
+    leadScoreId: uuid("lead_score_id").notNull(),
+    prospectId: uuid("prospect_id").notNull(),
+    campaignId: uuid("campaign_id"),
+    stageId: uuid("stage_id").notNull(),
+    stageKey: text("stage_key").notNull(),
+    /** Usuario que lo movió (null: automático o desconocido). */
+    actorUserId: uuid("actor_user_id"),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    tenantFk("lead_stage_events_prospect_fk", t.organizationId, t.prospectId, prospects).onDelete(
+      "cascade",
+    ),
+    index("lead_stage_events_org_at_idx").on(t.organizationId, t.at),
+    index("lead_stage_events_lead_idx").on(t.leadScoreId),
+    ...tenantPolicies("lead_stage_events", t.organizationId, {
+      select: "member",
+      insert: false,
+      update: false,
+      delete: false,
+    }),
+  ],
+);

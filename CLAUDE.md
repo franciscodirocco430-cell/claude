@@ -319,6 +319,25 @@ e2e/                Playwright.
 - `select` no controlado que refleja un valor del servidor: ponele `key` con ese valor
   (solo lee `defaultValue` al montarse).
 
+## Métricas
+
+- **Página** `/metricas` + export `/api/metricas/csv?vista=campanas|canales|setters` (con RLS,
+  mismos filtros). Período en la zona de la organización (`parsePeriod()`: por defecto 30
+  días, ambos extremos incluidos, máximo 1 año).
+- **Definiciones** (`src/server/metrics/service.ts`, una vez y en código): enviados =
+  salientes del período; contactados = prospectos con saliente en el período; respondieron
+  = escribieron después de ese primer saliente (por canal, en ese canal); calificados =
+  entraron a calificado/agendado/ganado en el período; agendados = reuniones creadas;
+  costo = suma de `ai_runs.cost_usd` (corridas sin precio se informan aparte).
+  Atribución: setter = autor del mensaje (`__ai__` IA, `__auto__` secuencias); para
+  calificados/agendados, canal de la primera respuesta y setter del primer envío. El costo
+  de IA no se atribuye a setters.
+- **Historial de etapas** (`lead_stage_events`): lo escribe un trigger `SECURITY DEFINER`
+  sobre `lead_scores` (alta o cambio de `stage_id`, actor = `auth.uid()`). Ningún código lo
+  escribe a mano; los usuarios solo lo leen. Backfill aproximado con `updated_at`.
+- **Cálculo**: SQL trae filas atribuidas (`loadRawMetrics`) y la agregación es pura
+  (`aggregate.ts`, testeada). CSV con BOM, CRLF y neutralización de fórmulas (`csv.ts`).
+
 ## Tests e2e sin Docker
 
 `e2e/support/mock-gotrue.ts` emula lo mínimo de Supabase Auth (signup con autoconfirm,
