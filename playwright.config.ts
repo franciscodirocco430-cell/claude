@@ -14,6 +14,23 @@ if (!testDbUrl) throw new Error("Los tests e2e necesitan TEST_DATABASE_URL.");
 const e2eDbUrl = new URL(testDbUrl);
 e2eDbUrl.pathname = "/setter_e2e";
 
+const googlePort = Number(process.env.MOCK_GOOGLE_PORT ?? 54398);
+const googleBase = `http://127.0.0.1:${googlePort}`;
+/** Google y el email apuntan al mock: ni la app ni el worker salen a internet en e2e. */
+const googleEnv = {
+  GOOGLE_CLIENT_ID: "e2e-client-id",
+  GOOGLE_CLIENT_SECRET: "e2e-client-secret",
+  GOOGLE_OAUTH_AUTHORIZE_URL: `${googleBase}/o/oauth2/v2/auth`,
+  GOOGLE_OAUTH_TOKEN_URL: `${googleBase}/token`,
+  GOOGLE_OAUTH_REVOKE_URL: `${googleBase}/revoke`,
+  GMAIL_API_URL: `${googleBase}/gmail/v1`,
+  UNSUBSCRIBE_SIGNING_SECRET: "e2e-unsubscribe-secret-de-al-menos-32-caracteres",
+  EMAIL_MIN_GAP_SECONDS: "0",
+  EMAIL_MAX_GAP_SECONDS: "0",
+  EMAIL_DISPATCH_INTERVAL_MS: "1000",
+  EMAIL_SYNC_INTERVAL_MS: "2000",
+};
+
 const workerHealthPort = Number(process.env.E2E_WORKER_HEALTH_PORT ?? 3199);
 const encryptionKey = randomBytes(32).toString("base64");
 
@@ -25,6 +42,7 @@ const appEnv = {
   SUPABASE_SERVICE_ROLE_KEY: "e2e-service-role-key",
   TOKEN_ENCRYPTION_KEY: encryptionKey,
   NEXT_TELEMETRY_DISABLED: "1",
+  ...googleEnv,
 };
 
 export default defineConfig({
@@ -57,6 +75,13 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
+      command: "pnpm exec tsx e2e/support/mock-google.ts",
+      url: `${googleBase}/health`,
+      env: { MOCK_GOOGLE_PORT: String(googlePort) },
+      reuseExistingServer: !!process.env.E2E_REUSE_SERVER,
+      timeout: 30_000,
+    },
+    {
       // Worker real con IA simulada: procesa los jobs de investigación y redacción.
       command: "pnpm exec tsx worker/index.ts",
       url: `http://127.0.0.1:${workerHealthPort}`,
@@ -67,6 +92,8 @@ export default defineConfig({
         WORKER_HEALTH_PORT: String(workerHealthPort),
         WORKER_POLL_INTERVAL_MS: "300",
         NODE_ENV: "test",
+        APP_URL: `http://localhost:${port}`,
+        ...googleEnv,
       },
       reuseExistingServer: !!process.env.E2E_REUSE_SERVER,
       timeout: 60_000,

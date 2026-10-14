@@ -215,10 +215,36 @@ e2e/                Playwright.
 - Atajos: O abrir y copiar · E enviado · S saltear · R regenerar · Ctrl+Enter enviado.
 - e2e: `window.open` se reemplaza por un registro de URLs: los tests nunca abren las redes.
 
+## Email: Gmail y secuencias
+
+- **Conexión Gmail** (`src/app/api/oauth/google/*`, `src/server/google/`): OAuth con PKCE,
+  `access_type=offline`, scopes mínimos `gmail.send` + `gmail.readonly` (este último es
+  restringido: producción requiere verificación de Google). El callback exige mismo
+  usuario, organización y rol admin que inició el flujo (cookie `sc_google_oauth`).
+  Tokens cifrados con AAD `${id}:access|refresh`; `invalid_grant` → casilla `revoked`.
+- **Secuencias** (`src/server/sequences/`): hasta 6 pasos, el primero con asunto, los
+  seguimientos ≥ 1 día después y en el mismo hilo (In-Reply-To). Variables
+  `{{var|defecto}}` (`src/server/email/template.ts`); una variable sin valor frena la
+  inscripción (`stopped_manual` con motivo), nunca se envía con huecos. Horario hábil
+  por secuencia en la zona del prospecto (o de la organización).
+- **Envío** (`src/server/email/sender.ts`, jobs `send_sequence_step` / `sync_mailbox`):
+  el worker despacha cada `EMAIL_DISPATCH_INTERVAL_MS`. Antes de enviar: `decideOutbound()`,
+  supresión, sync del hilo, horario, límite diario y espaciado aleatorio con lock de la
+  casilla (`FOR UPDATE`). Respuesta → frena todas las inscripciones del prospecto y pasa
+  a "respondió"; rebote → supresión; respuesta automática se guarda pero no frena.
+- **Baja**: token HMAC (`UNSUBSCRIBE_SIGNING_SECRET`). `/baja/[token]` pide un clic de
+  confirmación (los escáneres de links no dan de baja); `List-Unsubscribe-Post` hace el
+  one-click por POST a `/api/baja/[token]`.
+- **Lecturas consistentes con auto-refresh**: si una página calcula "hay trabajo en curso"
+  aparte de la lista, contá primero y listá después (si no, la vista puede quedar
+  congelada con el auto-refresh apagado).
+
 ## Tests e2e sin Docker
 
 `e2e/support/mock-gotrue.ts` emula lo mínimo de Supabase Auth (signup con autoconfirm,
 login, refresh, `/user`, logout) y recrea la base `setter_e2e` (shim + migraciones).
+`e2e/support/mock-google.ts` emula OAuth de Google y la API de Gmail (envío, hilos y
+`/__test/reply` para simular respuestas y rebotes).
 Playwright levanta el mock, el worker (con `AI_FAKE=true` y health check) y la app
 (`pnpm build && pnpm start`). `E2E_REUSE_SERVER=1` reutiliza servidores ya levantados. Si tenés Supabase
 local, los mismos specs deberían pasar apuntando a él, pero eso todavía no se verificó.

@@ -1,5 +1,13 @@
 /** Rutas que no requieren sesión. */
-export const PUBLIC_PATHS = ["/login", "/registro", "/auth", "/invitacion"] as const;
+export const PUBLIC_PATHS = [
+  "/login",
+  "/registro",
+  "/auth",
+  "/invitacion",
+  // Baja de emails: la usa el destinatario, que no tiene cuenta.
+  "/baja",
+  "/api/baja",
+] as const;
 
 export const LOGIN_PATH = "/login";
 export const DEFAULT_AFTER_LOGIN = "/campanas";

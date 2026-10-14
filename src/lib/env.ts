@@ -32,6 +32,24 @@ export const serverEnvSchema = z.object({
   /** Fuentes de datos públicos: deshabilitadas salvo "true" explícito (y costo verificado). */
   PROSPECT_SOURCE_GOOGLE_PLACES_ENABLED: z.enum(["true", "false"]).optional(),
 
+  /** Google OAuth (Gmail). Sin estas, no se puede conectar Gmail. */
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  /** Solo tests: apuntan a un mock de Google. En producción, dejarlas vacías. */
+  GOOGLE_OAUTH_AUTHORIZE_URL: z.url().default("https://accounts.google.com/o/oauth2/v2/auth"),
+  GOOGLE_OAUTH_TOKEN_URL: z.url().default("https://oauth2.googleapis.com/token"),
+  GOOGLE_OAUTH_REVOKE_URL: z.url().default("https://oauth2.googleapis.com/revoke"),
+  GMAIL_API_URL: z.url().default("https://gmail.googleapis.com/gmail/v1"),
+  /** Firma de los links de baja (HMAC). Cambiarla invalida los links ya enviados. */
+  UNSUBSCRIBE_SIGNING_SECRET: z.string().min(32).optional(),
+  /** Espaciado aleatorio entre emails de una misma casilla (segundos). */
+  EMAIL_MIN_GAP_SECONDS: z.coerce.number().int().min(0).default(120),
+  EMAIL_MAX_GAP_SECONDS: z.coerce.number().int().min(0).default(420),
+  /** Cada cuánto el worker busca emails para enviar y respuestas para leer. */
+  EMAIL_DISPATCH_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
+  /** Cada cuánto se leen los hilos de cada casilla para detectar respuestas y rebotes. */
+  EMAIL_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
+
   DEFAULT_TIMEZONE: z.string().default("America/Argentina/Buenos_Aires"),
 
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),

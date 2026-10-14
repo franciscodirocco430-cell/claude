@@ -4,6 +4,10 @@ import { hostname } from "node:os";
 import { createDatabase } from "@/db/client";
 import { getWorkerEnv } from "@/lib/env";
 import { createAiClient } from "@/server/ai/factory";
+import { GmailProvider } from "@/server/email/gmail";
+import { dispatchEmailWork } from "@/server/email/sender";
+import { googleConfigFromEnv } from "@/server/google/config";
+import { getMailboxAccessToken } from "@/server/google/mailboxes";
 import { claimNextJob, completeJob, failJob } from "@/server/jobs/queue";
 import { PublicWebsiteFetcher } from "@/server/research/website";
 import { buildHandlers } from "./handlers";
@@ -21,7 +25,29 @@ function log(message: string, extra: Record<string, unknown> = {}) {
 
 const { client: ai, config } = createAiClient(env);
 if (env.AI_FAKE === "true") log("ATENCIÓN: IA simulada (AI_FAKE=true)");
-const handlers = buildHandlers({ ai, config, fetcher: new PublicWebsiteFetcher() });
+const google = googleConfigFromEnv(env);
+const emailEnabled = !!google && !!env.UNSUBSCRIBE_SIGNING_SECRET;
+const handlers = buildHandlers(
+  { ai, config, fetcher: new PublicWebsiteFetcher() },
+  emailEnabled
+    ? {
+        mail: new GmailProvider(env.GMAIL_API_URL, (mailbox) =>
+          getMailboxAccessToken(db, {
+            accountId: mailbox.id,
+            config: google!,
+            encryptionKey: env.TOKEN_ENCRYPTION_KEY,
+          }),
+        ),
+        appUrl: env.APP_URL,
+        unsubscribeSecret: env.UNSUBSCRIBE_SIGNING_SECRET!,
+        defaultTimeZone: env.DEFAULT_TIMEZONE,
+        minGapSeconds: env.EMAIL_MIN_GAP_SECONDS,
+        maxGapSeconds: Math.max(env.EMAIL_MIN_GAP_SECONDS, env.EMAIL_MAX_GAP_SECONDS),
+      }
+    : null,
+);
+if (!emailEnabled)
+  log("email deshabilitado: faltan GOOGLE_CLIENT_ID/SECRET o UNSUBSCRIBE_SIGNING_SECRET");
 
 async function runOnce(): Promise<boolean> {
   const job = await claimNextJob(db, workerId, { types: Object.keys(handlers) });
@@ -71,6 +97,14 @@ async function main() {
     models: { fast: config.fast.model, smart: config.smart.model },
   });
   const health = env.WORKER_HEALTH_PORT ? startHealthServer(env.WORKER_HEALTH_PORT) : null;
+  // Despachador de emails: encola envíos vencidos y lecturas de hilos (idempotente).
+  const dispatcher = emailEnabled
+    ? setInterval(() => {
+        dispatchEmailWork(db, new Date(), env.EMAIL_SYNC_INTERVAL_MS).catch((error) =>
+          log("error despachando emails", { error: String(error) }),
+        );
+      }, env.EMAIL_DISPATCH_INTERVAL_MS)
+    : null;
   const shutdown = () => {
     if (stopping) return;
     stopping = true;
@@ -80,6 +114,7 @@ async function main() {
   process.on("SIGTERM", shutdown);
 
   await Promise.all(Array.from({ length: env.WORKER_CONCURRENCY }, (_, i) => loop(i)));
+  if (dispatcher) clearInterval(dispatcher);
   health?.close();
   await sql.end();
   log("worker detenido");

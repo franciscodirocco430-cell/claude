@@ -1,4 +1,5 @@
-import { index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { ADMIN_WRITE, MEMBER_WRITE, id, tenantFk, tenantPolicies, timestamps } from "./_helpers";
 import { campaigns } from "./campaigns";
 import { enrollmentStatus, sequenceStatus } from "./enums";
@@ -19,9 +20,20 @@ export const emailSequences = pgTable(
     name: text("name").notNull(),
     mailboxAccountId: uuid("mailbox_account_id"),
     status: sequenceStatus("status").notNull().default("draft"),
+    /** Franja de envío en la hora local del prospecto: [inicio, fin) y días (0 = domingo). */
+    sendStartHour: integer("send_start_hour").notNull().default(9),
+    sendEndHour: integer("send_end_hour").notNull().default(18),
+    sendDays: integer("send_days")
+      .array()
+      .notNull()
+      .default(sql`'{1,2,3,4,5}'::integer[]`),
     ...timestamps(),
   },
   (t) => [
+    check(
+      "email_sequences_send_hours",
+      sql`${t.sendStartHour} >= 0 and ${t.sendEndHour} <= 24 and ${t.sendStartHour} < ${t.sendEndHour}`,
+    ),
     unique("email_sequences_org_id_unique").on(t.organizationId, t.id),
     tenantFk("email_sequences_campaign_fk", t.organizationId, t.campaignId, campaigns).onDelete(
       "set null",
@@ -70,6 +82,10 @@ export const sequenceEnrollments = pgTable(
     nextSendAt: timestamp("next_send_at", { withTimezone: true }),
     lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
     gmailThreadId: text("gmail_thread_id"),
+    /** Message-ID del primer email: los siguientes van como respuesta en el mismo hilo. */
+    firstMessageRfcId: text("first_message_rfc_id"),
+    firstSubject: text("first_subject"),
+    stopReason: text("stop_reason"),
     stoppedAt: timestamp("stopped_at", { withTimezone: true }),
     ...timestamps(),
   },

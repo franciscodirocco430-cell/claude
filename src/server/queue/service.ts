@@ -30,6 +30,7 @@ import {
 import { CHANNEL_RULES } from "@/server/ai/channel-rules";
 import { SOCIAL_CHANNELS, type SocialChannel } from "@/server/compliance/channels";
 import { DomainError } from "@/server/errors";
+import { advanceLeadStage } from "@/server/pipeline/stages";
 import { buildOpenUrl, startOfDayInZone } from "./open-link";
 
 /** Canales que se envían a mano desde la cola. El email sale automático (Fase 5). */
@@ -421,7 +422,13 @@ export async function markTaskSent(
     sentAt: now,
   });
 
-  await advanceToContacted(tx, scope.organizationId, task.prospectId, task.campaignId);
+  await advanceLeadStage(tx, {
+    organizationId: scope.organizationId,
+    prospectId: task.prospectId,
+    campaignId: task.campaignId,
+    to: "contactado",
+    from: ["nuevo"],
+  });
 
   await tx
     .update(outreachTasks)
@@ -439,35 +446,6 @@ export async function markTaskSent(
       ),
     );
   return { conversationId: conversation!.id };
-}
-
-/** Pasa el lead a "contactado" solo si estaba en "nuevo" (nunca lo hace retroceder). */
-async function advanceToContacted(
-  tx: Transaction,
-  organizationId: string,
-  prospectId: string,
-  campaignId: string | null,
-) {
-  const stages = await tx
-    .select({ id: pipelineStages.id, key: pipelineStages.key })
-    .from(pipelineStages)
-    .where(
-      and(
-        eq(pipelineStages.organizationId, organizationId),
-        inArray(pipelineStages.key, ["nuevo", "contactado"]),
-      ),
-    );
-  const nuevo = stages.find((s) => s.key === "nuevo")?.id;
-  const contactado = stages.find((s) => s.key === "contactado")?.id;
-  if (!contactado) return;
-  await tx
-    .insert(leadScores)
-    .values({ organizationId, prospectId, campaignId, stageId: contactado })
-    .onConflictDoUpdate({
-      target: [leadScores.organizationId, leadScores.prospectId, leadScores.campaignId],
-      set: { stageId: contactado },
-      setWhere: nuevo ? eq(leadScores.stageId, nuevo) : sql`false`,
-    });
 }
 
 export async function skipTask(

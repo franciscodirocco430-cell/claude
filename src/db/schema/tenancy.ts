@@ -153,6 +153,11 @@ export const connectedAccounts = pgTable(
     /** Tope diario de envíos (casillas de email). Por defecto conservador. */
     dailySendLimit: integer("daily_send_limit").notNull().default(30),
     settings: jsonb("settings").notNull().default({}),
+    /** Firma que se agrega a los emails enviados desde esta casilla. */
+    signature: text("signature"),
+    /** Último envío: base del espaciado aleatorio entre emails. */
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    lastError: text("last_error"),
     connectedBy: uuid("connected_by").references(() => authUsers.id, { onDelete: "set null" }),
     ...timestamps(),
   },

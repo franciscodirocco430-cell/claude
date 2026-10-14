@@ -4,6 +4,7 @@ import {
   MessageSquareQuote,
   ChevronRight,
   FileUp,
+  Mail,
   Pencil,
   UserPlus,
   Users,
@@ -62,6 +63,13 @@ export default async function CampaignPage({
   const { ctx, campaign } = await loadCampaign(id);
   const isAdmin = isAdminRole(ctx.role);
   const archived = campaign.status === "archived";
+  // Los contadores van ANTES de la lista: si los jobs terminan entre una consulta y
+  // otra, la lista muestra un estado igual o más nuevo y busy=0 no deja la vista
+  // congelada en "Redactando" con el auto-refresh apagado.
+  const [preparable, busy] = await Promise.all([
+    countPreparable(getDb(), ctx.organizationId, campaign.id),
+    countBusy(getDb(), ctx.organizationId, campaign.id),
+  ]);
   const list = await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
     listCampaignProspects(tx, {
       organizationId: ctx.organizationId,
@@ -70,10 +78,6 @@ export default async function CampaignPage({
       page: Number(page) || 1,
     }),
   );
-  const [preparable, busy] = await Promise.all([
-    countPreparable(getDb(), ctx.organizationId, campaign.id),
-    countBusy(getDb(), ctx.organizationId, campaign.id),
-  ]);
   const totalPages = Math.max(1, Math.ceil(list.total / list.pageSize));
   const pageHref = (p: number) =>
     `/campanas/${campaign.id}?${new URLSearchParams({ ...(q ? { q } : {}), page: String(p) })}`;
@@ -97,6 +101,13 @@ export default async function CampaignPage({
                   <Pencil aria-hidden /> Editar
                 </Link>
               </Button>
+              {campaign.channels.includes("email") ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/campanas/${campaign.id}/secuencias`}>
+                    <Mail aria-hidden /> Secuencias
+                  </Link>
+                </Button>
+              ) : null}
               <Button asChild size="sm" variant="outline">
                 <Link href={`/campanas/${campaign.id}/ejemplos`}>
                   <MessageSquareQuote aria-hidden /> Ejemplos

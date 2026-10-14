@@ -13,3 +13,16 @@ export function composeEmailBody(body: string): string {
     `—\nSi no querés recibir más mensajes, podés darte de baja acá: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ].join("\n\n");
 }
+
+/** Reemplaza firma y link de baja reales. Si no hay firma, se quita la línea. */
+export function finalizeEmailBody(
+  composed: string,
+  signature: string | null,
+  unsubscribeUrl: string,
+): string {
+  return composed
+    .replace(SIGNATURE_PLACEHOLDER, (signature ?? "").trim())
+    .replace(UNSUBSCRIBE_PLACEHOLDER, unsubscribeUrl)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
