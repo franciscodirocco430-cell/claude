@@ -3,6 +3,9 @@ import type { Database } from "./client";
 
 export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
+/** Cualquier cosa sobre la que se puede consultar: la base o una transacción. */
+export type DbExecutor = Database | Transaction;
+
 export interface UserClaims {
   sub: string;
   email?: string;

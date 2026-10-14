@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signUp } from "./support/helpers";
 
 const SECTIONS = [
   { label: "Campañas", path: "/campanas", heading: "Campañas" },
@@ -8,6 +9,10 @@ const SECTIONS = [
   { label: "Métricas", path: "/metricas", heading: "Métricas" },
   { label: /Configuración|Ajustes/, path: "/configuracion", heading: "Configuración" },
 ];
+
+test.beforeEach(async ({ page }) => {
+  await signUp(page);
+});
 
 test("la raíz redirige a Campañas", async ({ page }) => {
   await page.goto("/");

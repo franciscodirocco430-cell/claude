@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { authenticatedRole, authUsers } from "drizzle-orm/supabase";
@@ -40,6 +41,30 @@ export const organizations = pgTable(
   ],
 );
 
+/**
+ * Datos públicos de un usuario dentro de sus organizaciones. Se mantiene por
+ * trigger desde auth.users (que no es legible desde el cliente). Sin escritura
+ * desde el cliente: el email lo define Auth, no el usuario.
+ */
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    email: text("email"),
+    fullName: text("full_name"),
+    ...timestamps(),
+  },
+  (t) => [
+    pgPolicy("profiles_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`${t.id} = (select auth.uid()) or public.shares_org_with(${t.id})`,
+    }),
+  ],
+);
+
 export const memberships = pgTable(
   "memberships",
   {
@@ -62,6 +87,43 @@ export const memberships = pgTable(
       for: "select",
       to: authenticatedRole,
       using: sql`public.is_org_member(${t.organizationId})`,
+    }),
+  ],
+);
+
+/**
+ * Invitaciones a una organización. El token viaja solo en el link; acá se
+ * guarda su hash SHA-256. Se aceptan únicamente con una cuenta del mismo email.
+ */
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: id(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    /** Normalizado en minúsculas. */
+    email: text("email").notNull(),
+    role: memberRole("role").notNull().default("setter"),
+    tokenHash: text("token_hash").notNull().unique(),
+    invitedBy: uuid("invited_by").references(() => authUsers.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedBy: uuid("accepted_by").references(() => authUsers.id, { onDelete: "set null" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    index("invitations_org_idx").on(t.organizationId),
+    // Solo una invitación pendiente por email y organización.
+    uniqueIndex("invitations_pending_unique")
+      .on(t.organizationId, t.email)
+      .where(sql`${t.acceptedAt} is null and ${t.revokedAt} is null`),
+    // Owners y admins ven las invitaciones; crearlas/aceptarlas pasa por el servidor.
+    pgPolicy("invitations_select", {
+      for: "select",
+      to: authenticatedRole,
+      using: sql`public.is_org_admin(${t.organizationId})`,
     }),
   ],
 );

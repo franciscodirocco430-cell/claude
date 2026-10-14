@@ -61,7 +61,7 @@ pnpm typecheck           # tsc --noEmit
 pnpm format              # Prettier (format:check en CI)
 pnpm test                # tests unitarios (Vitest)
 pnpm test:db             # tests de base: RLS, FKs, cola (requiere TEST_DATABASE_URL)
-pnpm test:e2e            # Playwright (levanta la app)
+pnpm test:e2e            # Playwright: app + Postgres + mock de Auth (requiere TEST_DATABASE_URL)
 pnpm check               # lint + typecheck + format:check + test
 
 pnpm supabase:start      # Supabase local (requiere Docker)
@@ -117,6 +117,40 @@ e2e/                Playwright.
 - **UI**: mobile first (los setters usan el celular). Toda vista con estado vacío,
   de carga y de error. Sin scroll horizontal de página.
 - **Validación**: Zod en todo borde (forms, API, webhooks, salidas de IA, env).
+
+## Auth y multi-tenant
+
+- **Supabase Auth** (email + contraseña) vía `@supabase/ssr`. `src/middleware.ts` refresca
+  la sesión y manda a `/login` a quien no tiene sesión (rutas públicas en
+  `src/server/auth/redirects.ts`). El parámetro `next` siempre pasa por `safeNextPath()`.
+- **Contexto**: `requireAppContext()` (`src/server/auth/session.ts`) devuelve usuario,
+  organización activa y rol. La organización activa vive en la cookie `sc_org`, pero
+  solo puede elegir entre organizaciones de las que el usuario es miembro.
+- **Server actions**: la organización y el actor salen SIEMPRE de `requireAppContext()`,
+  nunca del formulario. Validan con Zod y devuelven `ActionState` (`src/server/actions.ts`).
+  Errores de negocio con `DomainError` (mensaje apto para el usuario).
+- **Roles**: owner > admin > setter. Reglas en `src/server/auth/permissions.ts` (puras,
+  testeadas): solo un owner toca owners, nadie se cambia su propio rol, nunca 0 owners.
+  `memberships` no tiene políticas de escritura: todo cambio pasa por los servicios de
+  `src/server/organizations/service.ts`, que bloquean filas (`FOR UPDATE`) para evitar
+  carreras.
+- **Invitaciones**: token de 256 bits en el link, en la base solo su SHA-256. Vencen a
+  los 7 días, son de un solo uso y solo las acepta una cuenta con el mismo email.
+  Hasta la Fase 5 (Gmail) el link se copia a mano desde Configuración.
+- **profiles**: espejo de `auth.users` mantenido por trigger; cada uno ve su perfil y
+  el de sus compañeros. Sin escritura desde el cliente.
+- **Gotcha**: no combinar `revalidatePath` con acciones usadas por `useActionState`:
+  dejaba la transición pendiente de forma intermitente (reproducido). Usá
+  `useRefreshOnSuccess(state)` en el componente cliente.
+- `SubmitButton` queda deshabilitado hasta hidratar: un envío nativo perdería la
+  respuesta de la acción.
+
+## Tests e2e sin Docker
+
+`e2e/support/mock-gotrue.ts` emula lo mínimo de Supabase Auth (signup con autoconfirm,
+login, refresh, `/user`, logout) y recrea la base `setter_e2e` (shim + migraciones).
+Playwright levanta el mock y la app (`pnpm build && pnpm start`). Si tenés Supabase
+local, los mismos specs deberían pasar apuntando a él, pero eso todavía no se verificó.
 
 ## Supabase local vs. Postgres pelado
 

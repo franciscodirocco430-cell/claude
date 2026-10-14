@@ -133,6 +133,12 @@ export async function createOrgFixture(db: Database, label: string): Promise<Org
       value: `baja-${label}@example.com`,
       reason: "unsubscribed",
     });
+    await tx.insert(s.invitations).values({
+      organizationId: f.orgId,
+      email: `pendiente-${label}@example.com`,
+      tokenHash: `fixture-${f.orgId}`,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
     await tx.insert(s.aiRuns).values({ organizationId: f.orgId, type: "research", model: "test" });
     await tx.insert(s.jobs).values({ organizationId: f.orgId, type: "noop" });
   });

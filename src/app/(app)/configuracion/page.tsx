@@ -1,9 +1,11 @@
-import { Ban, Link2, Users } from "lucide-react";
+import { Ban, Link2 } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAppContext } from "@/server/auth/session";
+import { TeamSection } from "./team-section";
 
 export const metadata: Metadata = { title: "Configuración" };
 
@@ -13,14 +15,15 @@ const PROVIDERS = [
   { name: "TikTok for Business", detail: "TikTok Business Messaging" },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const ctx = await requireAppContext();
   return (
     <>
       <PageHeader title="Configuración" description="Cuentas, equipo y lista de supresión." />
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Link2 className="size-4" aria-hidden /> Cuentas conectadas
             </CardTitle>
             <CardDescription>
@@ -50,21 +53,11 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="size-4" aria-hidden /> Equipo
-            </CardTitle>
-            <CardDescription>Invitá setters y administradores a tu organización.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm">Todavía no invitaste a nadie.</p>
-          </CardContent>
-        </Card>
+        <TeamSection ctx={ctx} />
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Ban className="size-4" aria-hidden /> Lista de supresión
             </CardTitle>
             <CardDescription>

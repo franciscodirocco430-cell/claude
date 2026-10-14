@@ -13,8 +13,15 @@ pnpm install
 cp .env.example .env            # completá las claves
 pnpm supabase:start             # copiá anon key y service role key al .env
 pnpm db:migrate
-pnpm db:seed
+pnpm db:seed                    # opcional: datos de ejemplo
 pnpm dev
 ```
+
+Entrá a http://localhost:3000/registro y creá tu cuenta: se crea tu organización y
+quedás como owner. Los usuarios del seed son solo dueños de datos de ejemplo y no
+tienen contraseña.
+
+Tests: `pnpm check`, `pnpm test:db` y `pnpm test:e2e` (los dos últimos necesitan
+`TEST_DATABASE_URL`).
 
 Reglas de cumplimiento, convenciones y todos los comandos: ver [CLAUDE.md](./CLAUDE.md).

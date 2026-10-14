@@ -22,6 +22,27 @@
       "when": 1791987251161,
       "tag": "0002_updated_at_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791988096427,
+      "tag": "0003_profile_helpers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791988120474,
+      "tag": "0004_profiles_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791988121705,
+      "tag": "0005_auth_user_sync",
+      "breakpoints": true
     }
   ]
 }

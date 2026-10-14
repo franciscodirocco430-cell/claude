@@ -43,7 +43,7 @@ describe.skipIf(!TEST_DATABASE_URL)("RLS multi-tenant", () => {
     const rows = await t.db.execute<{ tablename: string }>(sql`
       select distinct tablename from pg_policies where schemaname = 'public'`);
     const withPolicies = new Set(rows.map((r) => r.tablename));
-    for (const table of [...tenantTables, "organizations"]) {
+    for (const table of [...tenantTables, "organizations", "profiles"]) {
       if (SERVER_ONLY_TABLES.includes(table)) {
         expect(withPolicies.has(table), `${table} no debería tener políticas`).toBe(false);
       } else {
@@ -190,6 +190,54 @@ describe.skipIf(!TEST_DATABASE_URL)("RLS multi-tenant", () => {
         .returning(),
     );
     expect(updated).toEqual([]);
+  });
+
+  it("perfiles: cada uno ve el suyo y el de sus compañeros, nadie los modifica", async () => {
+    await withUserContext(t.db, { sub: a.setterId }, async (tx) => {
+      const rows = await tx.select({ id: s.profiles.id }).from(s.profiles);
+      expect(rows.map((r) => r.id).sort()).toEqual([a.ownerId, a.setterId].sort());
+      const updated = await tx
+        .update(s.profiles)
+        .set({ email: "falso@example.com" })
+        .where(eq(s.profiles.id, a.setterId))
+        .returning();
+      expect(updated).toEqual([]);
+    });
+  });
+
+  it("invitaciones: solo owners y admins de la org las ven; nadie las crea desde el cliente", async () => {
+    await t.db.insert(s.invitations).values({
+      organizationId: a.orgId,
+      email: "invitada@example.com",
+      tokenHash: `hash-${a.orgId}`,
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    const asOwner = await withUserContext(t.db, { sub: a.ownerId }, (tx) =>
+      tx.select().from(s.invitations),
+    );
+    expect(asOwner.map((i) => i.email).sort()).toEqual([
+      "invitada@example.com",
+      "pendiente-a@example.com",
+    ]);
+    const asSetter = await withUserContext(t.db, { sub: a.setterId }, (tx) =>
+      tx.select().from(s.invitations),
+    );
+    expect(asSetter).toEqual([]);
+    const asOtherOrg = await withUserContext(t.db, { sub: b.ownerId }, (tx) =>
+      tx.select().from(s.invitations),
+    );
+    expect(asOtherOrg.filter((i) => i.organizationId === a.orgId)).toEqual([]);
+    const error = await dbErrorMessage(
+      withUserContext(t.db, { sub: a.ownerId }, (tx) =>
+        tx.insert(s.invitations).values({
+          organizationId: a.orgId,
+          email: "x@example.com",
+          tokenHash: "x",
+          expiresAt: new Date(),
+        }),
+      ),
+    );
+    expect(error).toMatch(RLS_DENIED);
   });
 
   it("ai_runs es de solo lectura para los usuarios", async () => {

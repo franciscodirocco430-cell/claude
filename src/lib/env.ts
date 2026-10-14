@@ -50,3 +50,16 @@ export function getServerEnv(): ServerEnv {
   cached ??= parseServerEnv(process.env);
   return cached;
 }
+
+/**
+ * Variables públicas (llegan al navegador). Next solo las inyecta si se
+ * referencian literalmente, por eso no se leen dinámicamente.
+ */
+export function getPublicEnv() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Faltan NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  }
+  return { supabaseUrl: url, supabaseAnonKey: anonKey };
+}
