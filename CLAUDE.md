@@ -39,6 +39,8 @@ frená y preguntá.
 - `src/server/compliance/messaging-window.ts`: ventanas por plataforma (única fuente).
 - `src/server/compliance/outbound-policy.ts`: `decideOutbound()` es la **única puerta**
   para envíos automáticos. Todo adapter de canal la consulta antes de enviar.
+- `src/server/channels/outbound.ts`: `sendConversationMessage()` es el único camino de envío
+  por redes; consulta `decideOutbound()` con la conversación bloqueada (`FOR UPDATE`).
 - `eslint.config.mjs` (`no-restricted-imports`) y `tests/unit/compliance-guards.test.ts`
   bloquean librerías prohibidas y nombres de modelo hardcodeados.
 - Nunca relajes un test de cumplimiento para que pase.
@@ -238,6 +240,33 @@ e2e/                Playwright.
 - **Lecturas consistentes con auto-refresh**: si una página calcula "hay trabajo en curso"
   aparte de la lista, contá primero y listá después (si no, la vista puede quedar
   congelada con el auto-refresh apagado).
+
+## Canales entrantes (Meta, TikTok)
+
+- **`ChannelAdapter`** (`src/server/channels/types.ts`): `connect`, `receiveWebhook`,
+  `sendMessage`, `getWindowStatus` (delega en compliance). Adapters: `MetaAdapter`
+  (Instagram, Messenger, WhatsApp Cloud API), `TikTokAdapter` y `MockChannelAdapter`.
+  Se arman desde env en `registry.ts`; sin credenciales, el adapter no existe (404).
+- **Webhook** `/api/webhooks/[provider]` (público, autenticado por firma sobre el cuerpo
+  CRUDO, tope 1 MB): Meta = handshake GET (`hub.verify_token`) + `X-Hub-Signature-256`.
+  Solo encola un job `receive_inbound_message` por mensaje (clave = id del mensaje en la
+  plataforma: los reintentos del proveedor no duplican). Responder rápido.
+- **Asociación** (`inbound.ts`, en el worker): conversación por `externalThreadId =
+"<cuenta>:<remitente>"` → prospecto por handle (redes) o teléfono E.164 (WhatsApp) →
+  si no existe, se crea (`source = inbound`). Advisory lock por remitente (mensajes
+  simultáneos no duplican prospectos). Reutiliza la conversación manual de la Cola. Lead a
+  "respondió", tareas manuales abiertas salteadas, secuencias de email frenadas. Un
+  mensaje viejo no reabre la ventana. Cuenta desconocida → job `dead`.
+- Una cuenta de red social solo puede estar conectada en UNA organización (índice único).
+- **Pendiente / sin verificar**: conexión real (requiere apps aprobadas; `connect()`
+  devuelve `unavailable`); envío de Meta probado solo contra fixtures
+  (`META_GRAPH_API_URL` sin default: poner la versión vigente); TikTok Business Messaging:
+  la firma sigue la doc general de webhooks de TikTok y el formato del evento y el envío
+  NO están implementados (el webhook responde 501). No inventar esos formatos.
+- **Mock** (`CHANNELS_MOCK=true`, prohibido en producción salvo `APP_URL` localhost):
+  cuentas de prueba y simulador en Configuración; usa el mismo camino que un webhook real.
+- **Bandeja** (`src/server/inbox/service.ts`): lista y detalle de solo lectura con estado
+  de la ventana. Responder llega en la Fase 8.
 
 ## Tests e2e sin Docker
 

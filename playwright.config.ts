@@ -31,6 +31,14 @@ const googleEnv = {
   EMAIL_SYNC_INTERVAL_MS: "2000",
 };
 
+/** Canales: cuentas de prueba + simulador, y Meta configurado para probar firma y handshake. */
+const channelsEnv = {
+  CHANNELS_MOCK: "true",
+  CHANNELS_MOCK_SECRET: "e2e-mock-channels-secret",
+  META_APP_SECRET: "e2e-meta-app-secret",
+  META_WEBHOOK_VERIFY_TOKEN: "e2e-meta-verify-token",
+};
+
 const workerHealthPort = Number(process.env.E2E_WORKER_HEALTH_PORT ?? 3199);
 const encryptionKey = randomBytes(32).toString("base64");
 
@@ -43,6 +51,7 @@ const appEnv = {
   TOKEN_ENCRYPTION_KEY: encryptionKey,
   NEXT_TELEMETRY_DISABLED: "1",
   ...googleEnv,
+  ...channelsEnv,
 };
 
 export default defineConfig({

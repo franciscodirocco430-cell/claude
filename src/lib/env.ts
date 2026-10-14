@@ -50,6 +50,17 @@ export const serverEnvSchema = z.object({
   /** Cada cuánto se leen los hilos de cada casilla para detectar respuestas y rebotes. */
   EMAIL_SYNC_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
 
+  /** Meta (Instagram, Messenger, WhatsApp Cloud API): firma de webhooks y handshake. */
+  META_APP_SECRET: z.string().min(1).optional(),
+  META_WEBHOOK_VERIFY_TOKEN: z.string().min(16).optional(),
+  /** Base versionada de la Graph API (ej. https://graph.facebook.com/vXX.0). Sin esto no se envía. */
+  META_GRAPH_API_URL: z.url().optional(),
+  /** TikTok for Business: client secret de la app (firma de webhooks). */
+  TIKTOK_CLIENT_SECRET: z.string().min(1).optional(),
+  /** Solo desarrollo y tests: canales simulados (cuentas de prueba). Prohibido en producción. */
+  CHANNELS_MOCK: z.enum(["true", "false"]).default("false"),
+  CHANNELS_MOCK_SECRET: z.string().min(16).optional(),
+
   DEFAULT_TIMEZONE: z.string().default("America/Argentina/Buenos_Aires"),
 
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
@@ -67,8 +78,13 @@ export const workerEnvSchema = serverEnvSchema.partial({
   SUPABASE_SERVICE_ROLE_KEY: true,
 });
 
+/** `VAR=` vacío en el .env cuenta como no definida (si no, falla `min(1)` de las opcionales). */
+function withoutEmpty(source: Record<string, string | undefined>) {
+  return Object.fromEntries(Object.entries(source).filter(([, v]) => v !== ""));
+}
+
 export function parseServerEnv(source: Record<string, string | undefined>): ServerEnv {
-  const result = serverEnvSchema.safeParse(source);
+  const result = serverEnvSchema.safeParse(withoutEmpty(source));
   if (!result.success) {
     const issues = result.error.issues
       .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
@@ -105,7 +121,7 @@ let cachedWorker: WorkerEnv | undefined;
 
 export function getWorkerEnv(): WorkerEnv {
   if (!cachedWorker) {
-    const result = workerEnvSchema.safeParse(process.env);
+    const result = workerEnvSchema.safeParse(withoutEmpty(process.env));
     if (!result.success) {
       const issues = result.error.issues
         .map((i) => `  - ${i.path.join(".")}: ${i.message}`)

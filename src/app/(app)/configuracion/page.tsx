@@ -12,8 +12,12 @@ import { getServerEnv } from "@/lib/env";
 import { isAdminRole } from "@/server/auth/permissions";
 import { requireAppContext } from "@/server/auth/session";
 import { getDb } from "@/server/db";
+import { listChannelAccounts } from "@/server/channels/accounts";
+import { getChannelAdapters } from "@/server/channels/env";
+import type { SocialChannel } from "@/server/compliance/channels";
 import { googleConfigFromEnv } from "@/server/google/config";
 import { listMailboxes } from "@/server/google/mailboxes";
+import { ChannelAccountRow, ConnectMockAccountForm } from "./channel-accounts";
 import { MailboxRow } from "./mailbox-row";
 import { TeamSection } from "./team-section";
 
@@ -36,9 +40,9 @@ const GMAIL_RESULTS: Record<string, { ok: boolean; text: string }> = {
 };
 
 const OTHER_PROVIDERS = [
-  { name: "Meta", detail: "Instagram, Messenger y WhatsApp Cloud API" },
-  { name: "TikTok for Business", detail: "TikTok Business Messaging" },
-];
+  { key: "meta", name: "Meta", detail: "Instagram, Messenger y WhatsApp Cloud API" },
+  { key: "tiktok", name: "TikTok for Business", detail: "TikTok Business Messaging" },
+] as const;
 
 const REASONS: Record<string, string> = {
   unsubscribed: "Se dio de baja",
@@ -57,11 +61,13 @@ export default async function SettingsPage({
   const { gmail } = await searchParams;
   const isAdmin = isAdminRole(ctx.role);
   const googleReady = !!googleConfigFromEnv(getServerEnv());
-  const { mailboxes, suppressed, suppressedCount } = await withUserContext(
+  const adapters = getChannelAdapters();
+  const { mailboxes, channelAccounts, suppressed, suppressedCount } = await withUserContext(
     getDb(),
     { sub: ctx.user.id },
     async (tx) => ({
       mailboxes: await listMailboxes(tx, ctx.organizationId),
+      channelAccounts: await listChannelAccounts(tx, ctx.organizationId),
       suppressed: await tx
         .select()
         .from(suppressionList)
@@ -133,7 +139,18 @@ export default async function SettingsPage({
               Solo conexión por OAuth oficial. Nunca te vamos a pedir contraseñas de tus redes.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-3">
+            {channelAccounts.length ? (
+              <ul className="divide-y rounded-lg border">
+                {channelAccounts.map((a) => (
+                  <ChannelAccountRow
+                    key={a.id}
+                    account={{ ...a, channel: a.channel as SocialChannel }}
+                    canManage={isAdmin}
+                  />
+                ))}
+              </ul>
+            ) : null}
             <ul className="divide-y rounded-lg border">
               {OTHER_PROVIDERS.map((p) => (
                 <li
@@ -144,10 +161,17 @@ export default async function SettingsPage({
                     <p className="text-sm font-medium">{p.name}</p>
                     <p className="text-muted-foreground text-xs">{p.detail}</p>
                   </div>
-                  <Badge variant="outline">Próximamente</Badge>
+                  <Badge variant="outline">
+                    {adapters[p.key] ? "Webhook listo · conexión pendiente" : "Próximamente"}
+                  </Badge>
                 </li>
               ))}
             </ul>
+            <p className="text-muted-foreground text-xs">
+              Conectar cuentas reales requiere apps aprobadas por Meta y TikTok. Mientras tanto, los
+              mensajes entrantes se prueban con cuentas de prueba.
+            </p>
+            {isAdmin && adapters.mock ? <ConnectMockAccountForm /> : null}
           </CardContent>
         </Card>
 

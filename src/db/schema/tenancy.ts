@@ -168,6 +168,11 @@ export const connectedAccounts = pgTable(
       t.provider,
       t.externalId,
     ),
+    // Una cuenta de red social (página, IG, número de WhatsApp) llega por UN webhook:
+    // no puede estar conectada en dos organizaciones a la vez.
+    uniqueIndex("connected_accounts_social_external_unique")
+      .on(t.provider, t.channel, t.externalId)
+      .where(sql`${t.channel} <> 'email'`),
     ...tenantPolicies("connected_accounts", t.organizationId, ADMIN_WRITE),
   ],
 );

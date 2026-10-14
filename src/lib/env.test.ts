@@ -27,4 +27,10 @@ describe("parseServerEnv", () => {
   it("lista todas las variables faltantes", () => {
     expect(() => parseServerEnv({})).toThrow(/DATABASE_URL[\s\S]*SUPABASE_SERVICE_ROLE_KEY/);
   });
+
+  it("trata las variables vacías del .env como no definidas", () => {
+    const env = parseServerEnv({ ...valid, GOOGLE_CLIENT_ID: "", META_APP_SECRET: "" });
+    expect(env.GOOGLE_CLIENT_ID).toBeUndefined();
+    expect(env.META_APP_SECRET).toBeUndefined();
+  });
 });

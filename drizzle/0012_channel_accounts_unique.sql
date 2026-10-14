@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "connected_accounts_social_external_unique" ON "connected_accounts" USING btree ("provider","channel","external_id") WHERE "connected_accounts"."channel" <> 'email';

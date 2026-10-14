@@ -7,6 +7,8 @@ export const PUBLIC_PATHS = [
   // Baja de emails: la usa el destinatario, que no tiene cuenta.
   "/baja",
   "/api/baja",
+  // Webhooks de proveedores: se autentican por firma, no por sesión.
+  "/api/webhooks",
 ] as const;
 
 export const LOGIN_PATH = "/login";
