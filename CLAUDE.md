@@ -265,8 +265,7 @@ e2e/                Playwright.
   NO están implementados (el webhook responde 501). No inventar esos formatos.
 - **Mock** (`CHANNELS_MOCK=true`, prohibido en producción salvo `APP_URL` localhost):
   cuentas de prueba y simulador en Configuración; usa el mismo camino que un webhook real.
-- **Bandeja** (`src/server/inbox/service.ts`): lista y detalle con estado de la ventana, del
-  agente y avisos. Responder a mano llega en la Fase 8.
+- **Bandeja**: ver "Bandeja, CRM y ficha".
 
 ## Agente conversacional, calificación y agenda
 
@@ -295,6 +294,30 @@ e2e/                Playwright.
   IA. Al elegir: se re-verifica, se crea el evento con id determinista (reintentos no
   duplican), `meetings` + etapa "agendado". Sin calendario: `bookingUrl` o handoff.
 - `FakeAiClient` tiene un agente simulado determinista (task `agent_reply`) para dev/e2e.
+
+## Bandeja, CRM y ficha
+
+- **Bandeja** (`src/server/inbox/service.ts`): filtros por canal, campaña (o "sin"), etapa,
+  asignado ("yo", "nadie" o un miembro) y IA pausada, como formulario GET (sin JS, URL
+  compartible; `parseInboxFilters()` ignora valores inválidos). Paginada de a 50. Asignar
+  solo a miembros de la organización.
+- **Respuesta manual** (`src/server/inbox/reply.ts`): redes por `sendConversationMessage()`
+  (autor `human`); ventana vencida o tope de TikTok → tarea `ready` en la Cola, nunca envío;
+  WhatsApp fuera de ventana → bloqueado (plantillas pendientes). Email: mismo hilo
+  (In-Reply-To al último mensaje, "Re:"), firma y link de baja, respeta supresión. Al
+  enviar: se asigna a quien respondió (si nadie la tenía) y se pausa la IA.
+- **CRM** (`src/server/pipeline/board.ts`, `src/components/crm/pipeline-board.tsx`): una
+  columna por etapa, tarjeta por lead (prospecto × campaña), hasta 100 por columna.
+  `@dnd-kit/core` con mouse, touch (mantener apretado) y teclado + un `select` por tarjeta
+  como alternativa (celular y lectores de pantalla). UI optimista; las actualizaciones
+  después de un `await` vuelven a `startTransition` (sin parpadeo). Una persona puede mover
+  a cualquier etapa (también hacia atrás); la automatización nunca retrocede.
+- **Ficha** (`/prospectos/[pid]`, `src/server/prospects/record.ts`): historial de todas
+  las conversaciones (todos los canales, últimos 500 mensajes), puntaje y respuestas por
+  campaña, investigación, reuniones, tareas y secuencias. La página de la campaña sigue
+  teniendo borradores y acciones de IA.
+- `select` no controlado que refleja un valor del servidor: ponele `key` con ese valor
+  (solo lee `defaultValue` al montarse).
 
 ## Tests e2e sin Docker
 

@@ -13,7 +13,9 @@ import { getDb } from "@/server/db";
 import { markConversationNotificationsRead } from "@/server/agent/notifications";
 import { getConversation, windowLabel } from "@/server/inbox/service";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
+import { listMembers } from "@/server/organizations/service";
 import { AgentToggle } from "./agent-toggle";
+import { AssignSelect, ReplyForm } from "./reply-form";
 
 export const metadata: Metadata = { title: "Conversación" };
 
@@ -31,14 +33,20 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   if (!z.uuid().safeParse(id).success) notFound();
   const ctx = await requireAppContext();
   const now = new Date();
-  const conv = await withUserContext(getDb(), { sub: ctx.user.id }, async (tx) => {
+  const { conv, members } = await withUserContext(getDb(), { sub: ctx.user.id }, async (tx) => {
     const found = await getConversation(tx, ctx.organizationId, id, now);
     // Abrir la conversación da por vistos sus avisos.
     if (found) await markConversationNotificationsRead(tx, ctx.organizationId, id);
-    return found;
+    return { conv: found, members: found ? await listMembers(tx, ctx.organizationId) : [] };
   });
   if (!conv) notFound();
   const label = windowLabel(conv.window, now);
+  const replyHint =
+    conv.channel === "email"
+      ? "Se envía en el mismo hilo, con tu firma y el link de baja."
+      : conv.window.kind === "open"
+        ? null
+        : "La ventana para responder por la API está cerrada: si escribís, queda como tarea en la Cola para enviarlo desde la app.";
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -56,14 +64,12 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
       <div className="mb-4 flex flex-wrap gap-1">
         <Badge variant="secondary">{CHANNEL_LABELS[conv.channel]}</Badge>
         {label ? <Badge variant="outline">{label}</Badge> : null}
-        {conv.campaignId ? (
-          <Link
-            href={`/campanas/${conv.campaignId}/prospectos/${conv.prospectId}`}
-            className="text-primary text-xs underline-offset-2 hover:underline"
-          >
-            Ver ficha del prospecto
-          </Link>
-        ) : null}
+        <Link
+          href={`/prospectos/${conv.prospectId}`}
+          className="text-primary text-xs underline-offset-2 hover:underline"
+        >
+          Ver ficha del prospecto
+        </Link>
       </div>
       {conv.agentEnabled && conv.channel !== "email" ? (
         <section aria-label="Agente IA" className="mb-4 grid gap-3 rounded-lg border p-3 text-sm">
@@ -128,9 +134,17 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           </li>
         ))}
       </ol>
-      <p className="text-muted-foreground mt-4 text-xs">
-        Muy pronto vas a poder responder a mano desde acá.
-      </p>
+      <div className="mt-4 grid gap-3">
+        <ReplyForm conversationId={conv.id} hint={replyHint} canSend />
+        <AssignSelect
+          conversationId={conv.id}
+          assignedTo={conv.assignedTo}
+          members={members.map((m) => ({
+            userId: m.userId,
+            name: m.fullName ?? m.email ?? "Sin nombre",
+          }))}
+        />
+      </div>
     </div>
   );
 }

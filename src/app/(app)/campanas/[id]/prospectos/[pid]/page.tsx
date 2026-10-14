@@ -98,6 +98,12 @@ export default async function ProspectPage({
         ))}
         {prospect.email ? <Badge variant="outline">{prospect.email}</Badge> : null}
         {prospect.phone ? <Badge variant="outline">{prospect.phone}</Badge> : null}
+        <Link
+          href={`/prospectos/${prospect.id}`}
+          className="text-primary text-sm underline-offset-2 hover:underline"
+        >
+          Ver ficha completa
+        </Link>
       </div>
       {prospect.aiError ? (
         <Alert variant="destructive" className="mb-6 flex gap-2">
