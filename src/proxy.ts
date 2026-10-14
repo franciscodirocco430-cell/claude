@@ -3,11 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isPublicPath, LOGIN_PATH } from "@/server/auth/redirects";
 
 /**
- * Refresca la sesión de Supabase en cada request y manda al login a quien no
+ * Proxy (ex "middleware" en Next 15). Refresca la sesión de Supabase en cada request y manda al login a quien no
  * tiene sesión. La verificación de membresía a una organización se hace en el
- * layout de la app (necesita la base, que no está disponible en el edge).
+ * layout de la app (necesita la base y la organización activa).
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -45,7 +45,7 @@ frená y preguntá.
 
 ## Stack
 
-Next.js 15 (App Router) + TypeScript estricto · Tailwind v4 + shadcn/ui · Supabase
+Next.js 16 (App Router) + TypeScript estricto · Tailwind v4 + shadcn/ui · Supabase
 (Postgres, Auth, Storage, RLS) · Drizzle ORM · Zod · SDK de Anthropic · worker Node
 separado con tabla `jobs` · Vitest · Playwright · pnpm.
 
@@ -120,7 +120,7 @@ e2e/                Playwright.
 
 ## Auth y multi-tenant
 
-- **Supabase Auth** (email + contraseña) vía `@supabase/ssr`. `src/middleware.ts` refresca
+- **Supabase Auth** (email + contraseña) vía `@supabase/ssr`. `src/proxy.ts` (el ex middleware) refresca
   la sesión y manda a `/login` a quien no tiene sesión (rutas públicas en
   `src/server/auth/redirects.ts`). El parámetro `next` siempre pasa por `safeNextPath()`.
 - **Contexto**: `requireAppContext()` (`src/server/auth/session.ts`) devuelve usuario,
@@ -139,11 +139,36 @@ e2e/                Playwright.
   Hasta la Fase 5 (Gmail) el link se copia a mano desde Configuración.
 - **profiles**: espejo de `auth.users` mantenido por trigger; cada uno ve su perfil y
   el de sus compañeros. Sin escritura desde el cliente.
-- **Gotcha**: no combinar `revalidatePath` con acciones usadas por `useActionState`:
-  dejaba la transición pendiente de forma intermitente (reproducido). Usá
-  `useRefreshOnSuccess(state)` en el componente cliente.
+- **Gotcha (Next 15.5)**: con Next 15.5.27 el router dejaba transiciones de server
+  actions colgadas de forma intermitente (~20 %) cuando la respuesta traía un árbol
+  nuevo (`revalidatePath` o `redirect`): el fetch se abortaba antes de aplicarse.
+  Reproducido y medido; con Next 16.4 no se reproduce (0/30), por eso se actualizó.
+  Quedó la convención: acciones de `useActionState` sin `revalidatePath`, y el cliente
+  llama `useRefreshOnSuccess(state)`.
 - `SubmitButton` queda deshabilitado hasta hidratar: un envío nativo perdería la
   respuesta de la acción.
+
+## Campañas y prospectos
+
+- **Wizard** (`src/components/campaigns/campaign-wizard.tsx`): los esquemas de cada paso
+  viven en `src/server/campaigns/schemas.ts` y se usan en cliente y servidor. Campañas:
+  lectura para todos, escritura solo owner/admin (servicio + RLS). Estados:
+  borrador → activa ⇄ pausada → archivada (→ restaurar a pausada).
+- **Ingesta única**: CSV, alta manual y fuentes públicas pasan por
+  `ingestProspects()` (`src/server/prospects/ingest.ts`): normaliza (email, E.164,
+  URL, handle), descarta inválidos, deduplica dentro del lote y contra la
+  organización (email, teléfono, dominio web, handle), respeta la lista de supresión
+  e inserta en lotes. Email y teléfono son únicos por organización (índice parcial):
+  dos imports simultáneos no duplican.
+- **Links de perfiles**: `parseProfileInput()` solo analiza el TEXTO de la URL. Nunca
+  se accede al perfil.
+- **Opt-in de WhatsApp**: solo se registra con fecha válida (no futura) y teléfono.
+- **Fuentes de datos públicos** (`src/server/prospects/sources/`): implementan
+  `ProspectSource`. Solo orígenes `official_business_api` o `public_business_directory`.
+  Una fuente se puede usar solo si alguien verificó su costo (`cost.verifiedSummary`)
+  y está habilitada por env. Google Places está registrada pero NO implementada.
+- **CSV**: hasta 5000 filas y 2 MB; el servidor vuelve a parsear (no confía en el
+  navegador). Body de server actions: 3 MB (`next.config.ts`).
 
 ## Tests e2e sin Docker
 

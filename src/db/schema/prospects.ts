@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { authUsers } from "drizzle-orm/supabase";
@@ -40,11 +41,15 @@ export const prospects = pgTable(
     company: text("company"),
     industry: text("industry"),
     website: text("website"),
+    /** Dominio normalizado de `website` (null si es un agregador de links). Para deduplicar. */
+    websiteDomain: text("website_domain"),
     email: text("email"),
     /** Formato E.164 (ej. +5491123456789). */
     phone: text("phone"),
     notes: text("notes"),
     source: prospectSource("source").notNull().default("manual"),
+    /** Detalle del origen: nombre del CSV, id de la fuente pública, etc. */
+    sourceRef: text("source_ref"),
     timezone: text("timezone"),
     whatsappOptIn: boolean("whatsapp_opt_in").notNull().default(false),
     whatsappOptInAt: timestamp("whatsapp_opt_in_at", { withTimezone: true }),
@@ -57,8 +62,16 @@ export const prospects = pgTable(
     tenantFk("prospects_campaign_fk", t.organizationId, t.campaignId, campaigns).onDelete(
       "set null",
     ),
-    index("prospects_org_email_idx").on(t.organizationId, t.email),
-    index("prospects_org_phone_idx").on(t.organizationId, t.phone),
+    // Un mismo email o teléfono no puede estar dos veces en la organización: la
+    // deduplicación del importador se apoya en esto para ser segura ante carreras.
+    uniqueIndex("prospects_org_email_unique")
+      .on(t.organizationId, t.email)
+      .where(sql`${t.email} is not null`),
+    uniqueIndex("prospects_org_phone_unique")
+      .on(t.organizationId, t.phone)
+      .where(sql`${t.phone} is not null`),
+    index("prospects_org_domain_idx").on(t.organizationId, t.websiteDomain),
+    index("prospects_org_campaign_idx").on(t.organizationId, t.campaignId),
     // Sin fecha de opt-in no hay consentimiento registrado.
     check(
       "prospects_whatsapp_opt_in_has_date",

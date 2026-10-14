@@ -43,6 +43,13 @@
       "when": 1791988121705,
       "tag": "0005_auth_user_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791991698167,
+      "tag": "0006_prospect_dedupe",
+      "breakpoints": true
     }
   ]
 }

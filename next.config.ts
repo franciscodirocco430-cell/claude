@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Import de CSV: hasta 2 MB de texto (ver src/server/prospects/csv.ts) + margen.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
   async headers() {
     return [
       {

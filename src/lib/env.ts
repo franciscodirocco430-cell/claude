@@ -24,6 +24,9 @@ export const serverEnvSchema = z.object({
   AI_PRICE_SMART_INPUT_PER_MTOK: optionalNumber,
   AI_PRICE_SMART_OUTPUT_PER_MTOK: optionalNumber,
 
+  /** Fuentes de datos públicos: deshabilitadas salvo "true" explícito (y costo verificado). */
+  PROSPECT_SOURCE_GOOGLE_PLACES_ENABLED: z.enum(["true", "false"]).optional(),
+
   DEFAULT_TIMEZONE: z.string().default("America/Argentina/Buenos_Aires"),
 
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { createDatabase } from "@/db/client";
 import * as s from "@/db/schema";
 import { DEFAULT_PIPELINE_STAGES } from "@/server/pipeline/default-stages";
+import { websiteDomain } from "@/server/prospects/normalize";
 
 /**
  * Datos de ejemplo para desarrollo local. Todos los datos son ficticios
@@ -155,6 +156,7 @@ async function main() {
           .insert(s.prospects)
           .values({
             ...data,
+            websiteDomain: websiteDomain(data.website),
             organizationId: SEED.orgId,
             campaignId: SEED.campaignId,
             source: "manual",
