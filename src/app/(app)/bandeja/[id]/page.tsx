@@ -10,8 +10,10 @@ import { withUserContext } from "@/db/rls";
 import { cn } from "@/lib/utils";
 import { requireAppContext } from "@/server/auth/session";
 import { getDb } from "@/server/db";
+import { markConversationNotificationsRead } from "@/server/agent/notifications";
 import { getConversation, windowLabel } from "@/server/inbox/service";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
+import { AgentToggle } from "./agent-toggle";
 
 export const metadata: Metadata = { title: "Conversación" };
 
@@ -29,9 +31,12 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   if (!z.uuid().safeParse(id).success) notFound();
   const ctx = await requireAppContext();
   const now = new Date();
-  const conv = await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
-    getConversation(tx, ctx.organizationId, id, now),
-  );
+  const conv = await withUserContext(getDb(), { sub: ctx.user.id }, async (tx) => {
+    const found = await getConversation(tx, ctx.organizationId, id, now);
+    // Abrir la conversación da por vistos sus avisos.
+    if (found) await markConversationNotificationsRead(tx, ctx.organizationId, id);
+    return found;
+  });
   if (!conv) notFound();
   const label = windowLabel(conv.window, now);
 
@@ -60,6 +65,53 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           </Link>
         ) : null}
       </div>
+      {conv.agentEnabled && conv.channel !== "email" ? (
+        <section aria-label="Agente IA" className="mb-4 grid gap-3 rounded-lg border p-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="grid gap-0.5">
+              <p className="font-medium">{conv.aiPaused ? "IA pausada" : "IA activa"}</p>
+              {conv.aiPaused && conv.aiPausedReason ? (
+                <p className="text-muted-foreground text-xs">{conv.aiPausedReason}</p>
+              ) : null}
+            </div>
+            <AgentToggle conversationId={conv.id} paused={conv.aiPaused} />
+          </div>
+          {conv.lead ? (
+            <div className="grid gap-2">
+              <p>
+                Puntaje: <strong>{conv.lead.score}/100</strong> · Etapa: {conv.lead.stage}
+              </p>
+              {conv.lead.questions.length ? (
+                <ul className="text-muted-foreground grid gap-1 text-xs">
+                  {conv.lead.questions.map((q) => (
+                    <li key={q.text}>
+                      {q.text} <span className="text-foreground">{q.answer ?? "—"}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+          {conv.meeting ? (
+            <p>
+              Reunión agendada: {timeFormat.format(conv.meeting.startsAt)}
+              {conv.meeting.htmlLink ? (
+                <>
+                  {" · "}
+                  <a
+                    href={conv.meeting.htmlLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    Ver en Calendar
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
       <ol className="grid gap-2" aria-label="Mensajes">
         {conv.messages.map((m) => (
           <li
@@ -77,7 +129,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
         ))}
       </ol>
       <p className="text-muted-foreground mt-4 text-xs">
-        Muy pronto vas a poder responder desde acá.
+        Muy pronto vas a poder responder a mano desde acá.
       </p>
     </div>
   );

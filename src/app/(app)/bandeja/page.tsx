@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { withUserContext } from "@/db/rls";
 import { requireAppContext } from "@/server/auth/session";
 import { getDb } from "@/server/db";
+import { listUnreadNotifications } from "@/server/agent/notifications";
 import { listConversations, windowLabel } from "@/server/inbox/service";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
 
@@ -23,9 +24,10 @@ const timeFormat = new Intl.DateTimeFormat("es-AR", {
 export default async function InboxPage() {
   const ctx = await requireAppContext();
   const now = new Date();
-  const list = await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
-    listConversations(tx, ctx.organizationId, now),
-  );
+  const { list, alerts } = await withUserContext(getDb(), { sub: ctx.user.id }, async (tx) => ({
+    list: await listConversations(tx, ctx.organizationId, now),
+    alerts: await listUnreadNotifications(tx, ctx.organizationId, ctx.user.id),
+  }));
 
   return (
     <>
@@ -34,6 +36,22 @@ export default async function InboxPage() {
         description="Todas las conversaciones de todos los canales en un solo lugar."
       />
       <AutoRefresh active intervalMs={5000} />
+      {alerts.length ? (
+        <section aria-label="Avisos" className="mb-4 grid gap-2">
+          {alerts.map((a) => (
+            <Link
+              key={a.id}
+              href={a.link ?? "/bandeja"}
+              className="border-destructive/40 bg-destructive/5 hover:bg-destructive/10 grid gap-0.5 rounded-lg border p-3"
+            >
+              <span className="text-sm font-medium">{a.title}</span>
+              {a.body ? (
+                <span className="text-muted-foreground line-clamp-2 text-xs">{a.body}</span>
+              ) : null}
+            </Link>
+          ))}
+        </section>
+      ) : null}
       {list.length === 0 ? (
         <EmptyState
           icon={Inbox}
@@ -63,6 +81,7 @@ export default async function InboxPage() {
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="secondary">{CHANNEL_LABELS[c.channel]}</Badge>
                     {label ? <Badge variant="outline">{label}</Badge> : null}
+                    {c.aiPaused ? <Badge variant="destructive">IA pausada</Badge> : null}
                   </div>
                 </Link>
               </li>

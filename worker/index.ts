@@ -7,9 +7,11 @@ import { createAiClient } from "@/server/ai/factory";
 import { GmailProvider } from "@/server/email/gmail";
 import { dispatchEmailWork } from "@/server/email/sender";
 import { googleConfigFromEnv } from "@/server/google/config";
-import { getMailboxAccessToken } from "@/server/google/mailboxes";
+import { getGoogleAccessToken, getMailboxAccessToken } from "@/server/google/mailboxes";
 import { claimNextJob, completeJob, failJob } from "@/server/jobs/queue";
 import { PublicWebsiteFetcher } from "@/server/research/website";
+import { GoogleCalendarProvider } from "@/server/calendar/google-calendar";
+import { channelAdaptersFromEnv } from "@/server/channels/registry";
 import { buildHandlers } from "./handlers";
 
 const env = getWorkerEnv();
@@ -45,6 +47,21 @@ const handlers = buildHandlers(
         maxGapSeconds: Math.max(env.EMAIL_MIN_GAP_SECONDS, env.EMAIL_MAX_GAP_SECONDS),
       }
     : null,
+  {
+    ai,
+    config,
+    adapters: channelAdaptersFromEnv(env),
+    encryptionKey: env.TOKEN_ENCRYPTION_KEY,
+    calendar: google
+      ? new GoogleCalendarProvider(env.GOOGLE_CALENDAR_API_URL, (accountId) =>
+          getGoogleAccessToken(db, {
+            accountId,
+            config: google,
+            encryptionKey: env.TOKEN_ENCRYPTION_KEY,
+          }),
+        )
+      : null,
+  },
 );
 if (!emailEnabled)
   log("email deshabilitado: faltan GOOGLE_CLIENT_ID/SECRET o UNSUBSCRIBE_SIGNING_SECRET");

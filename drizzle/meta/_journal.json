@@ -92,6 +92,20 @@
       "when": 1792001617652,
       "tag": "0012_channel_accounts_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792002748449,
+      "tag": "0013_agent",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792002754162,
+      "tag": "0014_meetings_updated_at",
+      "breakpoints": true
     }
   ]
 }

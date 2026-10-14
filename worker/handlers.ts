@@ -6,6 +6,7 @@ import {
   RESEARCH_JOB,
   type PipelineDeps,
 } from "@/server/ai/pipeline";
+import { AGENT_JOB, runAgentReplyJob, type AgentDeps } from "@/server/agent/agent";
 import { INBOUND_JOB, runInboundJob } from "@/server/channels/inbound";
 import { runSendJob, runSyncJob, SEND_JOB, SYNC_JOB, type EmailDeps } from "@/server/email/sender";
 import type { Job } from "@/server/jobs/queue";
@@ -25,6 +26,7 @@ export type JobHandler = (ctx: JobContext) => Promise<void>;
 export function buildHandlers(
   deps: Omit<PipelineDeps, "db">,
   email: Omit<EmailDeps, "db"> | null,
+  agent: Omit<AgentDeps, "db">,
 ): Record<string, JobHandler> {
   return {
     noop: async () => {},
@@ -33,6 +35,10 @@ export function buildHandlers(
     [INBOUND_JOB]: async ({ db, job, log }) => {
       const outcome = await runInboundJob(db, job);
       log("mensaje entrante", { ...outcome });
+    },
+    [AGENT_JOB]: async ({ db, job, log }) => {
+      const outcome = await runAgentReplyJob({ ...agent, db }, job);
+      log("agente", { ...outcome });
     },
     // Sin Google configurado, los jobs de email no se toman (quedan en cola).
     ...(email

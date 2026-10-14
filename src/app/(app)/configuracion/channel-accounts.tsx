@@ -13,6 +13,7 @@ import type { SocialChannel } from "@/server/compliance/channels";
 import {
   connectMockAccountAction,
   disconnectChannelAccountAction,
+  setDefaultCampaignAction,
   simulateInboundAction,
 } from "./channel-actions";
 
@@ -29,6 +30,7 @@ export interface ChannelAccountView {
   displayName: string | null;
   externalId: string;
   mock: boolean;
+  defaultCampaignId: string | null;
 }
 
 function ActionMessage({ state }: { state: ActionState }) {
@@ -48,10 +50,16 @@ function ActionMessage({ state }: { state: ActionState }) {
 export function ChannelAccountRow({
   account,
   canManage,
+  campaigns,
 }: {
   account: ChannelAccountView;
   canManage: boolean;
+  campaigns: { id: string; name: string }[];
 }) {
+  const [campState, saveCampaign] = useActionState<ActionState, FormData>(
+    setDefaultCampaignAction,
+    idle,
+  );
   const [discState, disconnect] = useActionState<ActionState, FormData>(
     disconnectChannelAccountAction,
     idle,
@@ -74,6 +82,31 @@ export function ChannelAccountRow({
           {account.mock ? "Prueba" : "Conectada"}
         </Badge>
       </div>
+
+      {canManage ? (
+        <form action={saveCampaign} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="accountId" value={account.id} />
+          <div className="grid min-w-0 flex-1 gap-1">
+            <Label htmlFor={`campaign-${account.id}`}>Campaña para contactos nuevos</Label>
+            <NativeSelect
+              id={`campaign-${account.id}`}
+              name="campaignId"
+              defaultValue={account.defaultCampaignId ?? ""}
+            >
+              <option value="">Sin campaña (la IA no responde)</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <SubmitButton size="sm" variant="outline" pendingText="Guardando…">
+            Guardar campaña
+          </SubmitButton>
+          <ActionMessage state={campState} />
+        </form>
+      ) : null}
 
       {canManage && account.mock ? (
         <details className="rounded-md border p-3">

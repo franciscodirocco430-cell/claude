@@ -1,7 +1,8 @@
 /**
  * Emulación MÍNIMA de Google OAuth + Gmail API para los tests e2e. Implementa
  * solo lo que usa la app: authorize (con PKCE), token, revoke, perfil, envío,
- * metadatos e hilos. Más dos endpoints de test: ver lo enviado y simular respuestas.
+ * metadatos e hilos; Calendar (userinfo, listar y crear eventos). Más endpoints de
+ * test: ver lo enviado, simular respuestas y ver los eventos creados.
  * NO usar fuera de tests.
  */
 import { createHash, randomUUID } from "node:crypto";
@@ -12,7 +13,18 @@ const SCOPES = [
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.readonly",
 ];
+const CALENDAR_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/calendar.events"];
 const MAILBOX = "ventas@agencia-e2e.example.com";
+const CALENDAR_EMAIL = "agenda@agencia-e2e.example.com";
+
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: { dateTime: string };
+  end: { dateTime: string };
+  htmlLink: string;
+}
+const events: CalendarEvent[] = [];
 
 interface StoredMessage {
   id: string;
@@ -25,7 +37,8 @@ interface StoredMessage {
   isBounce?: boolean;
 }
 
-const codes = new Map<string, { challenge: string; redirectUri: string }>();
+const codes = new Map<string, { challenge: string; redirectUri: string; scopes: string[] }>();
+const tokenScopes = new Map<string, string[]>();
 const accessTokens = new Set<string>();
 const refreshTokens = new Set<string>();
 const messages: StoredMessage[] = [];
@@ -99,10 +112,18 @@ const server = createServer(async (req, res) => {
       ) {
         return json(res, 400, { error: "invalid_request" });
       }
-      if (!SCOPES.every((s) => scopes.includes(s)))
-        return json(res, 400, { error: "invalid_scope" });
+      const granted = SCOPES.every((s) => scopes.includes(s))
+        ? SCOPES
+        : CALENDAR_SCOPES.every((s) => scopes.includes(s))
+          ? CALENDAR_SCOPES
+          : null;
+      if (!granted) return json(res, 400, { error: "invalid_scope" });
       const code = randomUUID();
-      codes.set(code, { challenge: p.get("code_challenge")!, redirectUri: p.get("redirect_uri")! });
+      codes.set(code, {
+        challenge: p.get("code_challenge")!,
+        redirectUri: p.get("redirect_uri")!,
+        scopes: granted,
+      });
       const back = new URL(p.get("redirect_uri")!);
       back.searchParams.set("code", code);
       back.searchParams.set("state", p.get("state") ?? "");
@@ -111,6 +132,7 @@ const server = createServer(async (req, res) => {
     }
     if (path === "/token" && req.method === "POST") {
       const p = new URLSearchParams(await body(req));
+      let scopes = SCOPES;
       if (p.get("grant_type") === "authorization_code") {
         const stored = codes.get(p.get("code") ?? "");
         codes.delete(p.get("code") ?? "");
@@ -123,9 +145,11 @@ const server = createServer(async (req, res) => {
         ) {
           return json(res, 400, { error: "invalid_grant" });
         }
+        scopes = stored.scopes;
       } else if (p.get("grant_type") === "refresh_token") {
         if (!refreshTokens.has(p.get("refresh_token") ?? ""))
           return json(res, 400, { error: "invalid_grant" });
+        scopes = tokenScopes.get(p.get("refresh_token") ?? "") ?? SCOPES;
       } else {
         return json(res, 400, { error: "unsupported_grant_type" });
       }
@@ -133,14 +157,56 @@ const server = createServer(async (req, res) => {
       const refresh = `rt-${randomUUID()}`;
       accessTokens.add(access);
       refreshTokens.add(refresh);
+      tokenScopes.set(access, scopes);
+      tokenScopes.set(refresh, scopes);
+      // Google devuelve "email" como userinfo.email.
+      const scope = scopes
+        .map((s) => (s === "email" ? "https://www.googleapis.com/auth/userinfo.email" : s))
+        .join(" ");
       return json(res, 200, {
         access_token: access,
         refresh_token: refresh,
         expires_in: 3600,
-        scope: SCOPES.join(" "),
+        scope,
       });
     }
     if (path === "/revoke") return json(res, 200, {});
+
+    // ── OpenID userinfo + Calendar ──
+    const bearer = (req.headers.authorization ?? "").replace(/^Bearer /, "");
+    const can = (scope: string) =>
+      accessTokens.has(bearer) && tokenScopes.get(bearer)?.includes(scope);
+    if (path === "/userinfo") {
+      if (!can("email")) return json(res, 401, {});
+      return json(res, 200, { sub: "123", email: CALENDAR_EMAIL, email_verified: true });
+    }
+    if (path.startsWith("/calendar/v3/calendars/primary/events")) {
+      if (!can("https://www.googleapis.com/auth/calendar.events")) {
+        return json(res, 403, { error: { code: 403 } });
+      }
+      if (req.method === "POST") {
+        const data = JSON.parse(await body(req)) as Omit<CalendarEvent, "htmlLink">;
+        if (events.some((e) => e.id === data.id)) return json(res, 409, { error: { code: 409 } });
+        const event = { ...data, htmlLink: `https://calendar.example/event/${data.id}` };
+        events.push(event);
+        return json(res, 200, event);
+      }
+      const one = /\/events\/([^/]+)$/.exec(path);
+      if (one) {
+        const e = events.find((x) => x.id === decodeURIComponent(one[1]!));
+        return e ? json(res, 200, e) : json(res, 404, {});
+      }
+      const min = new Date(url.searchParams.get("timeMin") ?? 0).getTime();
+      const max = new Date(url.searchParams.get("timeMax") ?? 8.64e15).getTime();
+      return json(res, 200, {
+        timeZone: "America/Argentina/Buenos_Aires",
+        items: events.filter(
+          (e) =>
+            new Date(e.end.dateTime).getTime() > min && new Date(e.start.dateTime).getTime() < max,
+        ),
+      });
+    }
+    if (path === "/__test/events") return json(res, 200, events);
 
     // ── Gmail ──
     if (path.startsWith("/gmail/v1/users/me/")) {

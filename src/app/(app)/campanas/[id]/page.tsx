@@ -1,6 +1,7 @@
 import {
   CheckCircle2,
   ChevronLeft,
+  Bot,
   MessageSquareQuote,
   ChevronRight,
   FileUp,
@@ -111,6 +112,11 @@ export default async function CampaignPage({
               <Button asChild size="sm" variant="outline">
                 <Link href={`/campanas/${campaign.id}/ejemplos`}>
                   <MessageSquareQuote aria-hidden /> Ejemplos
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/campanas/${campaign.id}/agente`}>
+                  <Bot aria-hidden /> Agente IA
                 </Link>
               </Button>
               <StatusActions campaignId={campaign.id} status={campaign.status} />

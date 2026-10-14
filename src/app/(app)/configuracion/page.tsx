@@ -1,5 +1,5 @@
-import { desc, eq, sql } from "drizzle-orm";
-import { Ban, Link2, Mail } from "lucide-react";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { Ban, CalendarDays, Link2, Mail } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { withUserContext } from "@/db/rls";
-import { suppressionList } from "@/db/schema";
+import { campaigns, suppressionList } from "@/db/schema";
 import { getServerEnv } from "@/lib/env";
 import { isAdminRole } from "@/server/auth/permissions";
 import { requireAppContext } from "@/server/auth/session";
@@ -16,7 +16,8 @@ import { listChannelAccounts } from "@/server/channels/accounts";
 import { getChannelAdapters } from "@/server/channels/env";
 import type { SocialChannel } from "@/server/compliance/channels";
 import { googleConfigFromEnv } from "@/server/google/config";
-import { listMailboxes } from "@/server/google/mailboxes";
+import { listCalendars, listMailboxes } from "@/server/google/mailboxes";
+import { CalendarRow } from "./calendar-row";
 import { ChannelAccountRow, ConnectMockAccountForm } from "./channel-accounts";
 import { MailboxRow } from "./mailbox-row";
 import { TeamSection } from "./team-section";
@@ -39,6 +40,19 @@ const GMAIL_RESULTS: Record<string, { ok: boolean; text: string }> = {
   error: { ok: false, text: "No pudimos conectar Gmail. Probá de nuevo en unos minutos." },
 };
 
+const CALENDAR_RESULTS: Record<string, { ok: boolean; text: string }> = {
+  ...GMAIL_RESULTS,
+  conectado: { ok: true, text: "Google Calendar conectado." },
+  faltan_permisos: {
+    ok: false,
+    text: "Faltan permisos: hay que aceptar ver y crear eventos del calendario.",
+  },
+  error: {
+    ok: false,
+    text: "No pudimos conectar Google Calendar. Probá de nuevo en unos minutos.",
+  },
+};
+
 const OTHER_PROVIDERS = [
   { key: "meta", name: "Meta", detail: "Instagram, Messenger y WhatsApp Cloud API" },
   { key: "tiktok", name: "TikTok for Business", detail: "TikTok Business Messaging" },
@@ -55,18 +69,24 @@ const REASONS: Record<string, string> = {
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gmail?: string }>;
+  searchParams: Promise<{ gmail?: string; calendario?: string }>;
 }) {
   const ctx = await requireAppContext();
-  const { gmail } = await searchParams;
+  const { gmail, calendario } = await searchParams;
   const isAdmin = isAdminRole(ctx.role);
   const googleReady = !!googleConfigFromEnv(getServerEnv());
   const adapters = getChannelAdapters();
-  const { mailboxes, channelAccounts, suppressed, suppressedCount } = await withUserContext(
-    getDb(),
-    { sub: ctx.user.id },
-    async (tx) => ({
+  const { mailboxes, calendars, campaignOptions, channelAccounts, suppressed, suppressedCount } =
+    await withUserContext(getDb(), { sub: ctx.user.id }, async (tx) => ({
       mailboxes: await listMailboxes(tx, ctx.organizationId),
+      calendars: (await listCalendars(tx, ctx.organizationId)).filter((c) => c.status === "active"),
+      campaignOptions: await tx
+        .select({ id: campaigns.id, name: campaigns.name })
+        .from(campaigns)
+        .where(
+          and(eq(campaigns.organizationId, ctx.organizationId), ne(campaigns.status, "archived")),
+        )
+        .orderBy(campaigns.name),
       channelAccounts: await listChannelAccounts(tx, ctx.organizationId),
       suppressed: await tx
         .select()
@@ -81,9 +101,9 @@ export default async function SettingsPage({
             .from(suppressionList)
             .where(eq(suppressionList.organizationId, ctx.organizationId))
         )[0]?.n ?? 0,
-    }),
-  );
+    }));
   const result = gmail ? GMAIL_RESULTS[gmail] : undefined;
+  const calendarResult = calendario ? CALENDAR_RESULTS[calendario] : undefined;
 
   return (
     <>
@@ -133,6 +153,39 @@ export default async function SettingsPage({
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle as="h2" className="flex items-center gap-2">
+              <CalendarDays className="size-4" aria-hidden /> Google Calendar
+            </CardTitle>
+            <CardDescription>
+              El agente IA ofrece horarios libres reales y crea el evento cuando el prospecto elige.
+              Pedimos permiso solo para ver y crear eventos.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {calendarResult ? (
+              <Alert variant={calendarResult.ok ? "success" : "destructive"}>
+                {calendarResult.text}
+              </Alert>
+            ) : null}
+            {calendars.length ? (
+              <ul className="divide-y rounded-lg border">
+                {calendars.map((c) => (
+                  <CalendarRow key={c.id} calendar={c} canManage={isAdmin} />
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted-foreground text-sm">No hay calendarios conectados.</p>
+            )}
+            {isAdmin && googleReady ? (
+              <Button asChild variant="outline" className="w-fit">
+                <a href="/api/oauth/google/start?para=calendario">Conectar Google Calendar</a>
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Link2 className="size-4" aria-hidden /> Redes y mensajería
             </CardTitle>
             <CardDescription>
@@ -147,6 +200,7 @@ export default async function SettingsPage({
                     key={a.id}
                     account={{ ...a, channel: a.channel as SocialChannel }}
                     canManage={isAdmin}
+                    campaigns={campaignOptions}
                   />
                 ))}
               </ul>

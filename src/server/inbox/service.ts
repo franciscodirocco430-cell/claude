@@ -1,6 +1,16 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import type { DbExecutor } from "@/db/rls";
-import { conversations, messages, prospectHandles, prospects } from "@/db/schema";
+import {
+  campaigns,
+  conversations,
+  leadScores,
+  meetings,
+  messages,
+  pipelineStages,
+  prospectHandles,
+  prospects,
+} from "@/db/schema";
+import { parseAgentSettings } from "@/server/agent/settings";
 import type { Channel } from "@/server/compliance/channels";
 import { getWindowStatus, type WindowStatus } from "@/server/compliance/messaging-window";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
@@ -61,6 +71,7 @@ export async function listConversations(db: DbExecutor, organizationId: string, 
       phone: prospects.phone,
       email: prospects.email,
       handle: handleFor,
+      aiPaused: conversations.aiPaused,
       lastBody: last.body,
       lastDirection: last.direction,
       lastAt: last.sentAt,
@@ -110,13 +121,49 @@ export async function getConversation(
       email: prospects.email,
       source: prospects.source,
       handle: handleFor,
+      aiPaused: conversations.aiPaused,
+      aiPausedReason: conversations.aiPausedReason,
+      agentSettings: campaigns.agentSettings,
+      questions: campaigns.qualificationQuestions,
+      criteria: campaigns.qualificationCriteria,
     })
     .from(conversations)
     .innerJoin(prospects, eq(prospects.id, conversations.prospectId))
+    .leftJoin(
+      campaigns,
+      and(
+        eq(campaigns.id, conversations.campaignId),
+        eq(campaigns.organizationId, conversations.organizationId),
+      ),
+    )
     .where(
       and(eq(conversations.organizationId, organizationId), eq(conversations.id, conversationId)),
     );
   if (!conv) return null;
+  const [lead] = conv.campaignId
+    ? await db
+        .select({
+          score: leadScores.score,
+          answers: leadScores.answers,
+          stage: pipelineStages.name,
+        })
+        .from(leadScores)
+        .innerJoin(pipelineStages, eq(pipelineStages.id, leadScores.stageId))
+        .where(
+          and(
+            eq(leadScores.organizationId, organizationId),
+            eq(leadScores.prospectId, conv.prospectId),
+            eq(leadScores.campaignId, conv.campaignId),
+          ),
+        )
+    : [];
+  const [meeting] = await db
+    .select({ startsAt: meetings.startsAt, htmlLink: meetings.htmlLink })
+    .from(meetings)
+    .where(and(eq(meetings.organizationId, organizationId), eq(meetings.conversationId, conv.id)))
+    .orderBy(desc(meetings.startsAt))
+    .limit(1);
+  const agentEnabled = conv.agentSettings ? parseAgentSettings(conv.agentSettings).enabled : false;
   const list = await db
     .select({
       id: messages.id,
@@ -129,7 +176,29 @@ export async function getConversation(
     .where(eq(messages.conversationId, conv.id))
     .orderBy(asc(messages.sentAt), asc(messages.createdAt))
     .limit(500);
-  return { ...conv, name: contactName(conv), window: windowOf(conv, now), messages: list };
+  const answers = lead?.answers ?? {};
+  return {
+    ...conv,
+    name: contactName(conv),
+    window: windowOf(conv, now),
+    messages: list,
+    agentEnabled,
+    lead: lead
+      ? {
+          score: lead.score,
+          stage: lead.stage,
+          questions: (conv.questions ?? []).map((q, i) => ({
+            text: q,
+            answer: answers[`q${i + 1}`]?.answer ?? null,
+          })),
+          criteria: (conv.criteria ?? []).map((c, i) => ({
+            label: c.label,
+            met: answers[`c${i + 1}`]?.met ?? null,
+          })),
+        }
+      : null,
+    meeting: meeting ?? null,
+  };
 }
 
 /** Texto corto del estado de la ventana para la UI. */

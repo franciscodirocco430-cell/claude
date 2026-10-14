@@ -7,9 +7,12 @@ import { googleConfigFromEnv } from "@/server/google/config";
 import { savePendingAuth } from "@/server/google/connect";
 import { buildAuthorizeUrl, createPkcePair } from "@/server/google/oauth";
 
+/** `?para=calendario` conecta Google Calendar; sin parámetro, Gmail. */
 export async function GET(request: NextRequest) {
+  const purpose = request.nextUrl.searchParams.get("para") === "calendario" ? "calendar" : "gmail";
+  const param = purpose === "calendar" ? "calendario" : "gmail";
   const back = (error: string) =>
-    NextResponse.redirect(new URL(`/configuracion?gmail=${error}`, request.nextUrl.origin));
+    NextResponse.redirect(new URL(`/configuracion?${param}=${error}`, request.nextUrl.origin));
   const ctx = await getAppContext();
   if (!ctx) return NextResponse.redirect(new URL("/login", request.nextUrl.origin));
   if (!isAdminRole(ctx.role)) return back("sin_permiso");
@@ -23,6 +26,7 @@ export async function GET(request: NextRequest) {
     verifier,
     organizationId: ctx.organizationId,
     userId: ctx.user.id,
+    purpose,
   });
-  return NextResponse.redirect(buildAuthorizeUrl(config, state, challenge));
+  return NextResponse.redirect(buildAuthorizeUrl(config, state, challenge, purpose));
 }

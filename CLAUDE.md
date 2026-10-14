@@ -265,8 +265,36 @@ e2e/                Playwright.
   NO están implementados (el webhook responde 501). No inventar esos formatos.
 - **Mock** (`CHANNELS_MOCK=true`, prohibido en producción salvo `APP_URL` localhost):
   cuentas de prueba y simulador en Configuración; usa el mismo camino que un webhook real.
-- **Bandeja** (`src/server/inbox/service.ts`): lista y detalle de solo lectura con estado
-  de la ventana. Responder llega en la Fase 8.
+- **Bandeja** (`src/server/inbox/service.ts`): lista y detalle con estado de la ventana, del
+  agente y avisos. Responder a mano llega en la Fase 8.
+
+## Agente conversacional, calificación y agenda
+
+- **Flujo**: entrante guardado → `scheduleAgentReply()` encola `agent_reply` con demora
+  aleatoria (`replyDelayMin/MaxSeconds` de la campaña), clave por mensaje. Solo si la
+  campaña tiene el agente activo (`campaigns.agent_settings`, Zod en
+  `src/server/agent/settings.ts`, arranca APAGADO), la conversación no está pausada y el
+  canal es una red (email no). Contactos nuevos entran a la campaña por defecto de la
+  cuenta (`connected_accounts.settings.defaultCampaignId`).
+- **Job** (`src/server/agent/agent.ts`): debounce (si llegó otro mensaje, responde el job del
+  último), no responde lo ya respondido, con la ventana cerrada no gasta IA. Envía SIEMPRE por
+  `sendConversationMessage()` (autor `ai`, `ai_run_id`). Prompt `prompts/agent-reply/v1.ts`
+  (tier SMART), salida Zod, un reintento si la forma no valida, `ai_runs` tipo `reply`.
+- **Guardas deterministas** (`guards.ts`): pedir una persona → handoff sin llamar a la IA;
+  preguntar si es bot → la respuesta tiene que decir que es IA (si no, se antepone una
+  aclaración; si lo niega, se reemplaza). Nunca relajar estas guardas.
+- **Calificación en código**: la IA extrae respuestas (`q1…`) y criterios (`c1…`) a
+  `lead_scores.answers`; el puntaje = pesos cumplidos / total. Preguntas de a una. Todas
+  respondidas: puntaje < umbral → handoff; ≥ umbral → "calificado" y se ofrecen horarios.
+- **Handoff**: pausa la IA (`ai_paused` + motivo) y crea `notifications` (badge en la Bandeja).
+  Toggle pausar/reanudar en la conversación; reanudar reprograma el último mensaje pendiente.
+- **Agenda**: Google Calendar por OAuth (`/api/oauth/google/start?para=calendario`, scopes
+  `openid email calendar.events`; cuenta aparte `calendar:<email>`). Disponibilidad listando
+  eventos (no freeBusy: no se pudo verificar qué scopes acepta). `findFreeSlots()` en la zona
+  de la organización; los horarios ofrecidos y la confirmación los escribe el código, nunca la
+  IA. Al elegir: se re-verifica, se crea el evento con id determinista (reintentos no
+  duplican), `meetings` + etapa "agendado". Sin calendario: `bookingUrl` o handoff.
+- `FakeAiClient` tiene un agente simulado determinista (task `agent_reply`) para dev/e2e.
 
 ## Tests e2e sin Docker
 

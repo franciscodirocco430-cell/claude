@@ -9,6 +9,24 @@ export const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
 ] as const;
 
+/**
+ * Calendar: solo `calendar.events` (ver y crear eventos; la disponibilidad se
+ * calcula listando eventos) + `openid email` para saber qué cuenta se conectó.
+ */
+export const CALENDAR_SCOPES = [
+  "openid",
+  "email",
+  "https://www.googleapis.com/auth/calendar.events",
+] as const;
+
+export type GooglePurpose = "gmail" | "calendar";
+
+/** Scopes que tienen que volver concedidos (openid/email vuelven con otro nombre). */
+const REQUIRED_SCOPES: Record<GooglePurpose, readonly string[]> = {
+  gmail: GMAIL_SCOPES,
+  calendar: ["https://www.googleapis.com/auth/calendar.events"],
+};
+
 export interface GoogleOAuthConfig {
   clientId: string;
   clientSecret: string;
@@ -35,13 +53,14 @@ export function buildAuthorizeUrl(
   config: GoogleOAuthConfig,
   state: string,
   codeChallenge: string,
+  purpose: GooglePurpose = "gmail",
 ): string {
   const url = new URL(config.authorizeUrl);
   url.search = new URLSearchParams({
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: "code",
-    scope: GMAIL_SCOPES.join(" "),
+    scope: (purpose === "calendar" ? CALENDAR_SCOPES : GMAIL_SCOPES).join(" "),
     access_type: "offline", // refresh token para que el worker envíe sin el usuario
     prompt: "consent",
     include_granted_scopes: "false",
@@ -132,6 +151,6 @@ export async function revokeToken(config: GoogleOAuthConfig, token: string, fetc
 }
 
 /** Faltan scopes necesarios: el usuario destildó permisos en la pantalla de Google. */
-export function missingScopes(granted: string[]): string[] {
-  return GMAIL_SCOPES.filter((s) => !granted.includes(s));
+export function missingScopes(granted: string[], purpose: GooglePurpose = "gmail"): string[] {
+  return REQUIRED_SCOPES[purpose].filter((s) => !granted.includes(s));
 }

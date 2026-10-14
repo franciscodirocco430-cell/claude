@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -77,6 +78,8 @@ export const conversations = pgTable(
     externalThreadId: text("external_thread_id"),
     aiPaused: boolean("ai_paused").notNull().default(false),
     aiPausedReason: text("ai_paused_reason"),
+    /** Estado del agente (horarios ofrecidos…), validado con Zod en src/server/agent. */
+    agentState: jsonb("agent_state").$type<Record<string, unknown>>().notNull().default({}),
     assignedTo: uuid("assigned_to").references(() => authUsers.id, { onDelete: "set null" }),
     /** Base para calcular la ventana de respuesta de cada plataforma. */
     lastInboundAt: timestamp("last_inbound_at", { withTimezone: true }),

@@ -82,8 +82,12 @@ test("atajos de teclado: S saltea; al terminar se ve el estado vacío", async ({
   await page.goto("/cola");
   const heading = page.getByRole("heading", { level: 2 }).first();
   const first = await heading.innerText();
+  // Los atajos se registran al hidratar (el botón se habilita en ese momento).
+  const skip = page.getByRole("button", { name: /Saltear/ });
+  await expect(skip).toBeEnabled();
   await page.keyboard.press("s");
   await expect(heading).not.toHaveText(first);
+  await expect(skip).toBeEnabled();
   await page.keyboard.press("s");
   await expect(page.getByText("No tenés tareas pendientes")).toBeVisible();
 });

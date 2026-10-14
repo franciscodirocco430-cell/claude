@@ -5,7 +5,7 @@ import { signoutAction } from "@/app/(auth)/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS, type Role } from "@/server/auth/permissions";
-import { BottomNav, SidebarNav } from "./nav-links";
+import { BottomNav, SidebarNav, type NavBadges } from "./nav-links";
 import { OrgSwitcher } from "./org-switcher";
 
 export interface ShellAccount {
@@ -44,14 +44,22 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
   );
 }
 
-export function AppShell({ account, children }: { account: ShellAccount; children: ReactNode }) {
+export function AppShell({
+  account,
+  badges,
+  children,
+}: {
+  account: ShellAccount;
+  badges?: NavBadges;
+  children: ReactNode;
+}) {
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
       <aside className="bg-sidebar hidden border-r md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:gap-6 md:p-4">
         <div className="px-2 pt-1">
           <Brand />
         </div>
-        <SidebarNav />
+        <SidebarNav badges={badges} />
         <div className="mt-auto grid gap-3 border-t pt-4">
           <div className="grid gap-1 px-2">
             <div className="flex items-center justify-between gap-2">
@@ -82,7 +90,7 @@ export function AppShell({ account, children }: { account: ShellAccount; childre
         <main className="flex-1 px-4 py-6 pb-24 md:px-8 md:pb-8">{children}</main>
       </div>
 
-      <BottomNav />
+      <BottomNav badges={badges} />
     </div>
   );
 }

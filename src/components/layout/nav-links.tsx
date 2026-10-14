@@ -5,7 +5,25 @@ import { usePathname } from "next/navigation";
 import { isNavItemActive, NAV_ITEMS } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
-export function SidebarNav() {
+/** Contadores por ruta (ej. avisos sin leer en la Bandeja). */
+export type NavBadges = Partial<Record<string, number>>;
+
+function CountBadge({ count, className }: { count: number | undefined; className?: string }) {
+  if (!count) return null;
+  return (
+    <span
+      className={cn(
+        "bg-destructive text-destructive-foreground rounded-full px-1.5 text-[10px] leading-4 font-semibold",
+        className,
+      )}
+      aria-label={`${count} sin leer`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+export function SidebarNav({ badges = {} }: { badges?: NavBadges }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Principal" className="flex flex-col gap-1">
@@ -26,6 +44,7 @@ export function SidebarNav() {
           >
             <Icon className="size-4" aria-hidden />
             {item.label}
+            <CountBadge count={badges[item.href]} className="ml-auto" />
           </Link>
         );
       })}
@@ -33,7 +52,7 @@ export function SidebarNav() {
   );
 }
 
-export function BottomNav() {
+export function BottomNav({ badges = {} }: { badges?: NavBadges }) {
   const pathname = usePathname();
   return (
     <nav
@@ -54,7 +73,10 @@ export function BottomNav() {
                   active ? "text-foreground" : "text-muted-foreground",
                 )}
               >
-                <Icon className="size-5" aria-hidden />
+                <span className="relative">
+                  <Icon className="size-5" aria-hidden />
+                  <CountBadge count={badges[item.href]} className="absolute -top-1.5 -right-3" />
+                </span>
                 <span className="truncate">{item.shortLabel}</span>
               </Link>
             </li>

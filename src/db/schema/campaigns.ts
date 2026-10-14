@@ -53,6 +53,8 @@ export const campaigns = pgTable(
     dailyLimits: jsonb("daily_limits").$type<DailyLimits>().notNull().default({}),
     fewShotExamples: jsonb("few_shot_examples").$type<FewShotExample[]>().notNull().default([]),
     bookingUrl: text("booking_url"),
+    /** Configuración del agente conversacional (validada con Zod en src/server/agent/settings.ts). */
+    agentSettings: jsonb("agent_settings").$type<Record<string, unknown>>().notNull().default({}),
     createdBy: uuid("created_by").references(() => authUsers.id, { onDelete: "set null" }),
     ...timestamps(),
   },

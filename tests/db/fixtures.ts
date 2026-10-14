@@ -110,6 +110,20 @@ export async function createOrgFixture(db: Database, label: string): Promise<Org
       author: "human",
       body: "hola",
     });
+    await tx.insert(s.notifications).values({
+      organizationId: f.orgId,
+      kind: "handoff",
+      title: "aviso",
+      conversationId: f.conversationId,
+    });
+    await tx.insert(s.meetings).values({
+      organizationId: f.orgId,
+      prospectId: f.prospectId,
+      conversationId: f.conversationId,
+      externalEventId: `evento-${label}`,
+      startsAt: new Date(),
+      endsAt: new Date(Date.now() + 1_800_000),
+    });
     await tx.insert(s.emailSequences).values({
       id: f.sequenceId,
       organizationId: f.orgId,

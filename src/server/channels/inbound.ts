@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Database } from "@/db/client";
 import type { Transaction } from "@/db/rls";
 import {
+  campaigns,
   connectedAccounts,
   conversations,
   messages,
@@ -10,6 +11,8 @@ import {
   prospects,
   sequenceEnrollments,
 } from "@/db/schema";
+import { z } from "zod";
+import { scheduleAgentReply } from "@/server/agent/agent";
 import { enqueueJob, PermanentJobError, type Job } from "@/server/jobs/queue";
 import { advanceLeadStage } from "@/server/pipeline/stages";
 import { normalizeHandle, normalizePhone } from "@/server/prospects/normalize";
@@ -39,8 +42,15 @@ export async function enqueueInboundMessages(db: Database, list: InboundMessage[
 
 export type InboundOutcome =
   | { status: "unknown_account" }
-  | { status: "duplicate"; conversationId: string }
-  | { status: "stored"; conversationId: string; prospectId: string; createdProspect: boolean };
+  | { status: "duplicate"; organizationId: string; conversationId: string; messageId: string }
+  | {
+      status: "stored";
+      organizationId: string;
+      conversationId: string;
+      messageId: string;
+      prospectId: string;
+      createdProspect: boolean;
+    };
 
 /** Id estable de la conversación: la cuenta del negocio + el remitente. */
 export function threadIdFor(msg: Pick<InboundMessage, "accountExternalId" | "senderId">) {
@@ -62,7 +72,11 @@ export async function receiveInboundMessage(
   now = new Date(),
 ): Promise<InboundOutcome> {
   const [account] = await db
-    .select({ id: connectedAccounts.id, organizationId: connectedAccounts.organizationId })
+    .select({
+      id: connectedAccounts.id,
+      organizationId: connectedAccounts.organizationId,
+      defaultCampaignId: sql<string | null>`${connectedAccounts.settings}->>'defaultCampaignId'`,
+    })
     .from(connectedAccounts)
     .where(
       and(
@@ -108,7 +122,7 @@ export async function receiveInboundMessage(
     if (!conv) {
       let prospect = await matchProspect(tx, organizationId, msg);
       if (!prospect) {
-        prospect = await createInboundProspect(tx, organizationId, msg);
+        prospect = await createInboundProspect(tx, organizationId, msg, account.defaultCampaignId);
         createdProspect = true;
       }
       // Si el setter ya le escribió a mano (Fase 4), esa conversación todavía no
@@ -165,7 +179,15 @@ export async function receiveInboundMessage(
       })
       .onConflictDoNothing({ target: [messages.conversationId, messages.externalId] })
       .returning({ id: messages.id });
-    if (!inserted) return { status: "duplicate", conversationId: conv.id };
+    if (!inserted) {
+      const [dup] = await tx
+        .select({ id: messages.id })
+        .from(messages)
+        .where(
+          and(eq(messages.conversationId, conv.id), eq(messages.externalId, msg.externalMessageId)),
+        );
+      return { status: "duplicate", organizationId, conversationId: conv.id, messageId: dup!.id };
+    }
 
     const sentAtSql = sql`${sentAt.toISOString()}::timestamptz`;
     // La ventana corre desde el último mensaje del usuario; un mensaje viejo que
@@ -221,6 +243,8 @@ export async function receiveInboundMessage(
 
     return {
       status: "stored",
+      organizationId,
+      messageId: inserted.id,
       conversationId: conv.id,
       prospectId: conv.prospectId,
       createdProspect,
@@ -258,12 +282,33 @@ async function matchProspect(tx: Transaction, organizationId: string, msg: Inbou
   return null;
 }
 
-async function createInboundProspect(tx: Transaction, organizationId: string, msg: InboundMessage) {
+async function createInboundProspect(
+  tx: Transaction,
+  organizationId: string,
+  msg: InboundMessage,
+  defaultCampaignId: string | null,
+) {
   const handle = normalizeHandle(msg.senderHandle);
+  // Campaña por defecto de la cuenta (configurable): así el agente sabe qué guion seguir.
+  const campaignId =
+    defaultCampaignId && z.uuid().safeParse(defaultCampaignId).success
+      ? ((
+          await tx
+            .select({ id: campaigns.id })
+            .from(campaigns)
+            .where(
+              and(
+                eq(campaigns.organizationId, organizationId),
+                eq(campaigns.id, defaultCampaignId),
+              ),
+            )
+        )[0]?.id ?? null)
+      : null;
   const [created] = await tx
     .insert(prospects)
     .values({
       organizationId,
+      campaignId,
       fullName: msg.senderName?.trim() || null,
       phone: normalizePhone(msg.senderPhone),
       source: "inbound",
@@ -279,7 +324,7 @@ async function createInboundProspect(tx: Transaction, organizationId: string, ms
   await advanceLeadStage(tx, {
     organizationId,
     prospectId: created!.id,
-    campaignId: null,
+    campaignId,
     to: "nuevo",
     from: [],
   });
@@ -297,5 +342,12 @@ export async function runInboundJob(db: Database, job: Job) {
       `Mensaje para una cuenta no conectada (${parsed.data.channel} ${parsed.data.accountExternalId}).`,
     );
   }
+  // También en "duplicate": si un intento anterior guardó el mensaje pero no llegó a
+  // programar la respuesta, la clave de idempotencia evita duplicarla.
+  await scheduleAgentReply(db, {
+    organizationId: outcome.organizationId,
+    conversationId: outcome.conversationId,
+    messageId: outcome.messageId,
+  });
   return outcome;
 }

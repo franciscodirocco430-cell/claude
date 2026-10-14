@@ -5,8 +5,10 @@ import { getServerEnv } from "@/lib/env";
 import type { ActionState } from "@/server/actions";
 import { isAdminRole } from "@/server/auth/permissions";
 import { requireAppContext } from "@/server/auth/session";
+import { withUserContext } from "@/db/rls";
 import {
   connectMockAccount,
+  setDefaultCampaign,
   disconnectChannelAccount,
   simulateInboundMessage,
 } from "@/server/channels/accounts";
@@ -104,4 +106,28 @@ export async function simulateInboundAction(
     status: "success",
     message: "Mensaje simulado. En unos segundos aparece en la Bandeja.",
   };
+}
+
+export async function setDefaultCampaignAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await requireAppContext();
+  if (!isAdminRole(ctx.role)) return { status: "error", message: "Solo owners y admins." };
+  const parsed = z
+    .object({ accountId: z.uuid(), campaignId: z.union([z.uuid(), z.literal("")]) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { status: "error", message: "Datos inválidos." };
+  try {
+    await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
+      setDefaultCampaign(tx, {
+        organizationId: ctx.organizationId,
+        accountId: parsed.data.accountId,
+        campaignId: parsed.data.campaignId || null,
+      }),
+    );
+  } catch (error) {
+    return { status: "error", message: userMessage(error) };
+  }
+  return { status: "success", message: "Guardado." };
 }

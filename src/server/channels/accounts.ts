@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import type { Database } from "@/db/client";
 import type { DbExecutor } from "@/db/rls";
-import { connectedAccounts, connectedAccountSecrets } from "@/db/schema";
+import { campaigns, connectedAccounts, connectedAccountSecrets } from "@/db/schema";
 import type { SocialChannel } from "@/server/compliance/channels";
 import { DomainError } from "@/server/errors";
 import { enqueueInboundMessages } from "./inbound";
@@ -23,6 +23,7 @@ export async function listChannelAccounts(db: DbExecutor, organizationId: string
       displayName: connectedAccounts.displayName,
       status: connectedAccounts.status,
       mock: mockFlag,
+      defaultCampaignId: sql<string | null>`${connectedAccounts.settings}->>'defaultCampaignId'`,
       createdAt: connectedAccounts.createdAt,
     })
     .from(connectedAccounts)
@@ -137,4 +138,35 @@ export async function simulateInboundMessage(
   }
   await enqueueInboundMessages(db, result.messages);
   return result.messages[0];
+}
+
+/** Campaña a la que entran los contactos nuevos que escriben a esta cuenta. */
+export async function setDefaultCampaign(
+  db: DbExecutor,
+  input: { organizationId: string; accountId: string; campaignId: string | null },
+) {
+  if (input.campaignId) {
+    const [c] = await db
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(
+        and(eq(campaigns.organizationId, input.organizationId), eq(campaigns.id, input.campaignId)),
+      );
+    if (!c) throw new DomainError("not_found", "La campaña no existe.");
+  }
+  const patch = input.campaignId
+    ? sql`${connectedAccounts.settings} || jsonb_build_object('defaultCampaignId', ${input.campaignId}::text)`
+    : sql`${connectedAccounts.settings} - 'defaultCampaignId'`;
+  const [row] = await db
+    .update(connectedAccounts)
+    .set({ settings: patch })
+    .where(
+      and(
+        eq(connectedAccounts.organizationId, input.organizationId),
+        eq(connectedAccounts.id, input.accountId),
+        ne(connectedAccounts.channel, "email"),
+      ),
+    )
+    .returning({ id: connectedAccounts.id });
+  if (!row) throw new DomainError("not_found", "La cuenta no existe.");
 }

@@ -248,4 +248,33 @@ describe.skipIf(!TEST_DATABASE_URL)("RLS multi-tenant", () => {
     );
     expect(error).toMatch(RLS_DENIED);
   });
+
+  it("avisos y reuniones: el cliente no los crea; los avisos solo se marcan leídos", async () => {
+    const notif = await dbErrorMessage(
+      withUserContext(t.db, { sub: a.setterId }, (tx) =>
+        tx.insert(s.notifications).values({ organizationId: a.orgId, kind: "x", title: "falso" }),
+      ),
+    );
+    expect(notif).toMatch(RLS_DENIED);
+    const meeting = await dbErrorMessage(
+      withUserContext(t.db, { sub: a.ownerId }, (tx) =>
+        tx.insert(s.meetings).values({
+          organizationId: a.orgId,
+          prospectId: a.prospectId,
+          externalEventId: "falso",
+          startsAt: new Date(),
+          endsAt: new Date(),
+        }),
+      ),
+    );
+    expect(meeting).toMatch(RLS_DENIED);
+    const read = await withUserContext(t.db, { sub: a.setterId }, (tx) =>
+      tx
+        .update(s.notifications)
+        .set({ readAt: new Date() })
+        .where(eq(s.notifications.organizationId, a.orgId))
+        .returning({ id: s.notifications.id }),
+    );
+    expect(read).toHaveLength(1);
+  });
 });

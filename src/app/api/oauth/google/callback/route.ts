@@ -8,11 +8,27 @@ import { consumePendingAuth } from "@/server/google/connect";
 import { saveGoogleMailbox } from "@/server/google/mailboxes";
 import { exchangeCode, missingScopes } from "@/server/google/oauth";
 
+/** Email de la cuenta: Gmail lo da su perfil; Calendar, el userinfo de OpenID. */
+async function accountEmail(purpose: "gmail" | "calendar", accessToken: string) {
+  const env = getServerEnv();
+  const url =
+    purpose === "gmail" ? `${env.GMAIL_API_URL}/users/me/profile` : env.GOOGLE_USERINFO_URL;
+  const res = await fetch(url, {
+    headers: { authorization: `Bearer ${accessToken}` },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as { emailAddress?: string; email?: string };
+  return (purpose === "gmail" ? data.emailAddress : data.email) ?? null;
+}
+
 export async function GET(request: NextRequest) {
-  const back = (result: string) =>
-    NextResponse.redirect(new URL(`/configuracion?gmail=${result}`, request.nextUrl.origin));
   const params = request.nextUrl.searchParams;
   const pending = await consumePendingAuth(params.get("state"));
+  const purpose = pending?.purpose ?? "gmail";
+  const param = purpose === "calendar" ? "calendario" : "gmail";
+  const back = (result: string) =>
+    NextResponse.redirect(new URL(`/configuracion?${param}=${result}`, request.nextUrl.origin));
   if (params.get("error")) return back("cancelado");
   const code = params.get("code");
   if (!pending || !code) return back("estado_invalido");
@@ -30,22 +46,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const tokens = await exchangeCode(config, code, pending.verifier);
-    if (missingScopes(tokens.scopes).length) return back("faltan_permisos");
-    const profile = await fetch(`${env.GMAIL_API_URL}/users/me/profile`, {
-      headers: { authorization: `Bearer ${tokens.accessToken}` },
-      signal: AbortSignal.timeout(15_000),
-    });
-    const { emailAddress } = (await profile.json()) as { emailAddress?: string };
-    if (!profile.ok || !emailAddress) return back("error");
+    if (missingScopes(tokens.scopes, purpose).length) return back("faltan_permisos");
+    const email = await accountEmail(purpose, tokens.accessToken);
+    if (!email) return back("error");
     await saveGoogleMailbox(getDb(), {
       organizationId: ctx.organizationId,
       userId: ctx.user.id,
-      email: emailAddress,
+      email,
       tokens,
       encryptionKey: env.TOKEN_ENCRYPTION_KEY,
+      kind: purpose === "calendar" ? "calendar" : "mailbox",
     });
   } catch (error) {
-    console.error("Error conectando Gmail", error);
+    console.error("Error conectando Google", error);
     return back("error");
   }
   return back("conectado");

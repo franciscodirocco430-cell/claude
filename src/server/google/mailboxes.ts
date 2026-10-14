@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "@/db/client";
 import type { DbExecutor } from "@/db/rls";
 import { connectedAccounts, connectedAccountSecrets } from "@/db/schema";
@@ -27,17 +27,22 @@ export async function saveGoogleMailbox(
     email: string;
     tokens: GoogleTokens;
     encryptionKey: string;
+    /** Calendar se guarda como cuenta aparte (sin canal) aunque sea el mismo email. */
+    kind?: "mailbox" | "calendar";
   },
 ) {
+  const calendar = input.kind === "calendar";
+  const email = input.email.toLowerCase();
   return db.transaction(async (tx) => {
     const [account] = await tx
       .insert(connectedAccounts)
       .values({
         organizationId: input.organizationId,
         provider: "google",
-        channel: "email",
-        externalId: input.email.toLowerCase(),
-        displayName: input.email.toLowerCase(),
+        channel: calendar ? null : "email",
+        externalId: calendar ? `calendar:${email}` : email,
+        displayName: email,
+        settings: calendar ? { kind: "calendar" } : {},
         scopes: input.tokens.scopes,
         status: "active",
         tokenExpiresAt: input.tokens.expiresAt,
@@ -197,6 +202,29 @@ export async function disconnectMailbox(
       .set({ status: "revoked", tokenExpiresAt: null })
       .where(eq(connectedAccounts.id, input.accountId));
   });
+}
+
+/** Alias: el refresco de tokens es el mismo para cualquier cuenta de Google. */
+export const getGoogleAccessToken = getMailboxAccessToken;
+
+/** Calendarios de Google conectados (para agendar reuniones). */
+export async function listCalendars(db: DbExecutor, organizationId: string) {
+  return db
+    .select({
+      id: connectedAccounts.id,
+      email: connectedAccounts.displayName,
+      status: connectedAccounts.status,
+      lastError: connectedAccounts.lastError,
+    })
+    .from(connectedAccounts)
+    .where(
+      and(
+        eq(connectedAccounts.organizationId, organizationId),
+        eq(connectedAccounts.provider, "google"),
+        sql`${connectedAccounts.settings}->>'kind' = 'calendar'`,
+      ),
+    )
+    .orderBy(connectedAccounts.displayName);
 }
 
 /** Casillas de email de la organización (sin tokens: esos nunca salen del servidor). */

@@ -40,6 +40,8 @@ export const serverEnvSchema = z.object({
   GOOGLE_OAUTH_TOKEN_URL: z.url().default("https://oauth2.googleapis.com/token"),
   GOOGLE_OAUTH_REVOKE_URL: z.url().default("https://oauth2.googleapis.com/revoke"),
   GMAIL_API_URL: z.url().default("https://gmail.googleapis.com/gmail/v1"),
+  GOOGLE_CALENDAR_API_URL: z.url().default("https://www.googleapis.com/calendar/v3"),
+  GOOGLE_USERINFO_URL: z.url().default("https://openidconnect.googleapis.com/v1/userinfo"),
   /** Firma de los links de baja (HMAC). Cambiarla invalida los links ya enviados. */
   UNSUBSCRIBE_SIGNING_SECRET: z.string().min(32).optional(),
   /** Espaciado aleatorio entre emails de una misma casilla (segundos). */

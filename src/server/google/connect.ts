@@ -9,6 +9,7 @@ export interface PendingGoogleAuth {
   verifier: string;
   organizationId: string;
   userId: string;
+  purpose: "gmail" | "calendar";
 }
 
 export async function savePendingAuth(pending: PendingGoogleAuth) {
