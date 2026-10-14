@@ -1,0 +1,33 @@
+# Worker de Setter Copilot en Fly.io (la app web va en Vercel).
+# IMPORTANTE: escrito sin poder abrir la referencia oficial de fly.toml desde el entorno
+# donde se generó. Validalo antes del primer deploy con:  fly config validate
+app = "setter-copilot-worker" # cambialo por el nombre de tu app en Fly
+primary_region = "gru" # São Paulo: cerca de Supabase en sa-east-1
+kill_timeout = "60s" # tiempo para terminar los jobs en curso al apagar (SIGTERM)
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Migraciones antes de cada deploy (usa el DATABASE_URL de los secretos de Fly).
+[deploy]
+  release_command = "node_modules/.bin/tsx scripts/db/migrate.ts"
+
+# Lo no secreto va acá; los secretos con `fly secrets set` (ver docs/DEPLOY.md).
+[env]
+  NODE_ENV = "production"
+  WORKER_HEALTH_PORT = "8080"
+  WORKER_CONCURRENCY = "4"
+
+[[vm]]
+  memory = "512mb"
+  cpus = 1
+
+# Health check del worker (responde 200 mientras el loop de jobs está vivo).
+[checks]
+  [checks.worker]
+    type = "http"
+    port = 8080
+    path = "/"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"

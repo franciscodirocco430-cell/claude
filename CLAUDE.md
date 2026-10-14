@@ -71,6 +71,7 @@ pnpm db:generate         # genera migración desde el schema de Drizzle
 pnpm db:migrate          # aplica migraciones a DATABASE_URL
 pnpm db:seed             # datos de ejemplo
 pnpm db:shim             # SOLO para Postgres pelado sin Supabase (CI)
+pnpm deploy:check app    # valida variables de producción (app | worker)
 ```
 
 Al terminar cada fase: `pnpm check` + `pnpm test:db` + `pnpm test:e2e` en verde.
@@ -337,6 +338,17 @@ e2e/                Playwright.
   escribe a mano; los usuarios solo lo leen. Backfill aproximado con `updated_at`.
 - **Cálculo**: SQL trae filas atribuidas (`loadRawMetrics`) y la agregación es pura
   (`aggregate.ts`, testeada). CSV con BOM, CRLF y neutralización de fórmulas (`csv.ts`).
+
+## Deploy
+
+Guía completa en `docs/DEPLOY.md`: Vercel (`gru1`, `vercel.json`) + Supabase (São Paulo) +
+worker en Fly (`fly.toml`, región `gru`, sin validar contra la doc oficial: correr
+`fly config validate`). El `Dockerfile` es del **worker**: dependencias de producción y
+`tsx` directo, sin pnpm en runtime. Por eso `tsx` y `dotenv` van en `dependencies`. Las
+migraciones corren como `release_command`. App → pooler de Supabase en modo transacción
+(6543); worker/migraciones → modo sesión (5432) o conexión directa. `checkProductionEnv()`
+(`src/lib/deploy-check.ts`) concentra las reglas de producción. CI en
+`.github/workflows/ci.yml`.
 
 ## Tests e2e sin Docker
 
