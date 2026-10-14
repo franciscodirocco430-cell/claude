@@ -13,6 +13,7 @@ import { withUserContext } from "@/db/rls";
 import { CHANNEL_RULES } from "@/server/ai/channel-rules";
 import { getProspectDetail } from "@/server/campaigns/service";
 import { getDb } from "@/server/db";
+import { getLeadStage } from "@/server/queue/service";
 import { CHANNEL_LABELS } from "@/server/prospects/profile-url";
 import { loadCampaign } from "../../load";
 import { CopyButton, RegenerateButton, ReresearchButton } from "./prospect-actions";
@@ -47,12 +48,18 @@ export default async function ProspectPage({
   const { id, pid } = await params;
   const { ctx, campaign } = await loadCampaign(id);
   if (!z.uuid().safeParse(pid).success) notFound();
-  const detail = await withUserContext(getDb(), { sub: ctx.user.id }, (tx) =>
-    getProspectDetail(tx, {
-      organizationId: ctx.organizationId,
-      campaignId: campaign.id,
-      prospectId: pid,
-    }),
+  const [detail, stage] = await withUserContext(
+    getDb(),
+    { sub: ctx.user.id },
+    async (tx) =>
+      [
+        await getProspectDetail(tx, {
+          organizationId: ctx.organizationId,
+          campaignId: campaign.id,
+          prospectId: pid,
+        }),
+        await getLeadStage(tx, ctx.organizationId, pid, campaign.id),
+      ] as const,
   );
   if (!detail) notFound();
   const { prospect, handles, research, tasks } = detail;
@@ -82,6 +89,7 @@ export default async function ProspectPage({
         }
       />
       <div className="mb-6 flex flex-wrap gap-2">
+        <Badge variant="secondary">Etapa: {stage.name}</Badge>
         <AiStatusBadge status={prospect.aiStatus} />
         {handles.map((h) => (
           <Badge key={h.id} variant="outline">

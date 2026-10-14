@@ -42,6 +42,8 @@ export const outreachTasks = pgTable(
     assignedTo: uuid("assigned_to").references(() => authUsers.id, { onDelete: "set null" }),
     dueAt: timestamp("due_at", { withTimezone: true }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    /** Quién lo envió (cuenta para su tope diario). */
+    sentBy: uuid("sent_by").references(() => authUsers.id, { onDelete: "set null" }),
     skippedReason: text("skipped_reason"),
     failureReason: text("failure_reason"),
     ...timestamps(),
@@ -54,6 +56,7 @@ export const outreachTasks = pgTable(
       "set null",
     ),
     index("outreach_tasks_queue_idx").on(t.organizationId, t.assignedTo, t.status),
+    index("outreach_tasks_sent_idx").on(t.organizationId, t.sentBy, t.sentAt),
     // Una sola tarea abierta por prospecto y canal: regenerar actualiza, no duplica.
     uniqueIndex("outreach_tasks_open_unique")
       .on(t.organizationId, t.prospectId, t.channel)

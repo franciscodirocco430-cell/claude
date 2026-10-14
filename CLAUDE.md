@@ -196,6 +196,25 @@ e2e/                Playwright.
   (precios por env; caché: escritura 1,25×, lectura 0,1×).
 - **Errores permanentes**: `PermanentJobError` pasa el job a `dead` sin reintentos.
 
+## Cola del setter (modo copiloto)
+
+- Servicio en `src/server/queue/service.ts` (todo con RLS del usuario). Entran tareas
+  `ready` de campañas activas en Instagram, Facebook, TikTok y WhatsApp; el email no (sale
+  automático). Se ocultan mientras la IA regenera (prospecto en queued/researching/drafting).
+- Asignación: primero las del setter; si no hay, toma una libre con `FOR UPDATE SKIP LOCKED`
+  (dos setters nunca reciben la misma).
+- Tope diario por setter, campaña y canal (`campaigns.daily_limits`), contado desde el inicio
+  del día en la zona horaria de la organización (`startOfDayInZone`). Se revalida al marcar.
+- La lista de supresión se revisa al mostrar cada tarea: si está, se saltea sola.
+- "Abrir y copiar" (`buildOpenUrl`): wa.me con texto prellenado, ig.me/m/<usuario>, perfil
+  de TikTok, link de Facebook. `window.open` va directo en el gesto del usuario (si no, el
+  navegador lo bloquea). El envío lo hace siempre la persona en la app de la red.
+- "Enviado" (`markTaskSent`): tarea `sent_manual` + `sent_by`, conversación y mensaje
+  saliente (autor `human`), lead a "contactado" (nunca retrocede una etapa) y saltea las
+  otras tareas manuales del prospecto para no escribirle por varios canales.
+- Atajos: O abrir y copiar · E enviado · S saltear · R regenerar · Ctrl+Enter enviado.
+- e2e: `window.open` se reemplaza por un registro de URLs: los tests nunca abren las redes.
+
 ## Tests e2e sin Docker
 
 `e2e/support/mock-gotrue.ts` emula lo mínimo de Supabase Auth (signup con autoconfirm,
