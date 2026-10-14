@@ -1,0 +1,30 @@
+# Configuración de Supabase local (`pnpm supabase:start`, requiere Docker).
+# Las migraciones NO viven en supabase/migrations: las maneja Drizzle (carpeta drizzle/).
+# Flujo: pnpm supabase:start → pnpm db:migrate → pnpm db:seed
+project_id = "setter-copilot"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
