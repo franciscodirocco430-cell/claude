@@ -10,7 +10,7 @@ export function composeEmailBody(body: string): string {
   return [
     body.trim(),
     SIGNATURE_PLACEHOLDER,
-    `—\nSi preferís que no te vuelva a escribir, avisame acá: ${UNSUBSCRIBE_PLACEHOLDER}`,
+    `—\nSi no querés recibir más mensajes, podés darte de baja acá: ${UNSUBSCRIBE_PLACEHOLDER}`,
   ].join("\n\n");
 }
 
