@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { BrandMark } from "@/components/layout/brand-mark";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,9 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       <div className="animate-in fade-in slide-in-from-top-2 flex flex-col items-center gap-3 text-center duration-500">
-        <span className="brand-mark flex size-11 items-center justify-center rounded-xl">
-          <Sparkles className="size-5" aria-hidden />
-        </span>
+        <BrandMark size={64} className="animate-float-slow" />
         <div className="space-y-1">
           <p className="text-2xl font-semibold tracking-tight">
             Setter <span className="text-gradient">Copilot</span>

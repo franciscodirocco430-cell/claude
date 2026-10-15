@@ -1,10 +1,11 @@
-import { LogOut, Sparkles } from "lucide-react";
+import { LogOut } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signoutAction } from "@/app/(auth)/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS, type Role } from "@/server/auth/permissions";
+import { BrandMark } from "./brand-mark";
 import { BottomNav, SidebarNav, type NavBadges } from "./nav-links";
 import { OrgSwitcher } from "./org-switcher";
 
@@ -19,9 +20,7 @@ export interface ShellAccount {
 function Brand() {
   return (
     <Link href="/campanas" className="group flex items-center gap-2 font-semibold">
-      <span className="brand-mark flex size-7 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
-        <Sparkles className="size-4" aria-hidden />
-      </span>
+      <BrandMark className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
       <span>
         Setter <span className="text-gradient">Copilot</span>
       </span>

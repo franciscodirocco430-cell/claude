@@ -194,12 +194,6 @@
     animation: shimmer 8s linear infinite;
   }
 
-  .brand-mark {
-    background-image: linear-gradient(135deg, var(--primary), var(--brand-2));
-    color: white;
-    box-shadow: 0 6px 20px -6px color-mix(in oklch, var(--primary) 70%, transparent);
-  }
-
   .animate-float-slow {
     animation: float-slow 6s ease-in-out infinite;
   }
