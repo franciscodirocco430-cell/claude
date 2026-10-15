@@ -17,6 +17,8 @@ export const serverEnvSchema = z.object({
   }),
 
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  // Solo para claves que no están atadas a un workspace (la API pide el header anthropic-workspace-id).
+  ANTHROPIC_WORKSPACE_ID: z.string().min(1).optional(),
   AI_MODEL_FAST: z.string().min(1).optional(),
   AI_MODEL_SMART: z.string().min(1).optional(),
   AI_PRICE_FAST_INPUT_PER_MTOK: optionalNumber,
