@@ -85,7 +85,9 @@ test("secuencia: envía con firma y baja, detecta la respuesta y frena", async (
   const [mail] = await sentTo(request, email);
   expect(mail!.subject).toBe("Una idea para Clínica Respuesta");
   expect(mail!.text).toContain("Ana Pérez");
-  expect(mail!.text).toMatch(/darte de baja acá: http:\/\/localhost:\d+\/baja\//);
+  expect(mail!.text).toMatch(
+    /no te vuelva a escribir, avisame acá: http:\/\/localhost:\d+\/baja\//,
+  );
 
   await request.post(`${GOOGLE}/__test/reply`, {
     data: { to: email, from: `Laura <${email}>`, text: "¡Me interesa! ¿Hablamos el martes?" },
