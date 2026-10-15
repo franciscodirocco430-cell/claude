@@ -18,12 +18,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center",
+        "animate-in fade-in zoom-in-95 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center duration-500",
         className,
       )}
     >
-      <div className="bg-muted flex size-12 items-center justify-center rounded-full">
-        <Icon className="text-muted-foreground size-6" aria-hidden />
+      <div className="bg-primary/10 animate-float-slow flex size-12 items-center justify-center rounded-full">
+        <Icon className="text-primary size-6" aria-hidden />
       </div>
       <div className="max-w-sm space-y-1">
         <h2 className="font-medium">{title}</h2>

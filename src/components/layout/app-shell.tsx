@@ -18,11 +18,13 @@ export interface ShellAccount {
 
 function Brand() {
   return (
-    <Link href="/campanas" className="flex items-center gap-2 font-semibold">
-      <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-md">
+    <Link href="/campanas" className="group flex items-center gap-2 font-semibold">
+      <span className="brand-mark flex size-7 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
         <Sparkles className="size-4" aria-hidden />
       </span>
-      Setter Copilot
+      <span>
+        Setter <span className="text-gradient">Copilot</span>
+      </span>
     </Link>
   );
 }
@@ -77,7 +79,11 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-col">
+      <div className="relative isolate flex min-w-0 flex-col">
+        <div
+          className="from-primary/10 via-brand-2/5 pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b to-transparent"
+          aria-hidden
+        />
         <header className="bg-background/95 sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b px-4 backdrop-blur md:hidden">
           <Brand />
           <div className="flex min-w-0 items-center gap-1">

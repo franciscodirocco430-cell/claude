@@ -36,13 +36,22 @@ export function SidebarNav({ badges = {} }: { badges?: NavBadges }) {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs"
+                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground hover:translate-x-0.5",
             )}
           >
-            <Icon className="size-4" aria-hidden />
+            {active ? (
+              <span
+                className="bg-primary animate-in fade-in zoom-in-50 absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-full"
+                aria-hidden
+              />
+            ) : null}
+            <Icon
+              className="size-4 transition-transform duration-200 group-hover:scale-110"
+              aria-hidden
+            />
             {item.label}
             <CountBadge count={badges[item.href]} className="ml-auto" />
           </Link>
@@ -69,11 +78,16 @@ export function BottomNav({ badges = {} }: { badges?: NavBadges }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  "flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors",
+                  active ? "text-primary" : "text-muted-foreground",
                 )}
               >
-                <span className="relative">
+                <span
+                  className={cn(
+                    "relative rounded-full px-3 py-0.5 transition-all duration-300",
+                    active && "bg-primary/12",
+                  )}
+                >
                   <Icon className="size-5" aria-hidden />
                   <CountBadge count={badges[item.href]} className="absolute -top-1.5 -right-3" />
                 </span>
