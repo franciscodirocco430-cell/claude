@@ -120,6 +120,13 @@
       "when": 1792006576622,
       "tag": "0016_lead_stage_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792028876908,
+      "tag": "0017_revoke_definer_exec",
+      "breakpoints": true
     }
   ]
 }
